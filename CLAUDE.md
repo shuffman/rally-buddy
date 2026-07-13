@@ -79,8 +79,19 @@ xcodebuild -exportArchive -archivePath build/RallyBuddy.xcarchive \
 ```
 
 `manageAppVersionAndBuildNumber` in ExportOptions.plist auto-bumps the build
-number on upload, so repeat uploads need no project edits; bump
-MARKETING_VERSION in project.yml for user-visible versions.
+number on upload, so repeat uploads need no project edits.
+
+**Versioning is semver** on MARKETING_VERSION, tagged `vX.Y.Z` in git:
+- Bump with `scripts/bump-version.sh major|minor|patch` (edits project.yml,
+  regenerates the Xcode project, commits "Release vX.Y.Z", tags). Then
+  `git push && git push --tags` and archive/upload as above.
+- Pre-1.0 policy: **minor** = new features, **patch** = fixes/tuning.
+  1.0.0 = App Store release. Build numbers are a separate axis, assigned
+  at upload — never encode meaning in them.
+- Note: a new MARKETING_VERSION starts a new TestFlight version train, so
+  the first build of each version re-runs external beta review for the
+  public-link group (internal testers are unaffected).
+- The running version shows in the app: Offline tab → About.
 
 ## Architecture
 

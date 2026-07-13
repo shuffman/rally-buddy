@@ -35,6 +35,12 @@ struct OfflineMapsTab: View {
                     Text("Downloads cover street detail up to close zoom. A 40 km area is roughly 30–60 MB. Map data © OpenStreetMap contributors, tiles by OpenFreeMap.")
                 }
 
+                Section {
+                    LabeledContent("Version", value: Bundle.main.versionDisplay)
+                } header: {
+                    Text("About")
+                }
+
                 Section("Downloaded areas") {
                     if offlineManager.packs.isEmpty {
                         Text("Nothing downloaded yet")
@@ -69,6 +75,15 @@ struct OfflineMapsTab: View {
     private func downloadRoute(_ route: Route) {
         guard let bounds = OfflineMapManager.bounds(of: route.path, paddingKm: 8) else { return }
         offlineManager.download(name: route.name, bounds: bounds)
+    }
+}
+
+extension Bundle {
+    /// "0.2.0 (6)" — semantic version plus App Store build number.
+    var versionDisplay: String {
+        let version = infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = infoDictionary?["CFBundleVersion"] as? String ?? "?"
+        return "\(version) (\(build))"
     }
 }
 
