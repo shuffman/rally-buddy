@@ -99,8 +99,13 @@ MARKETING_VERSION in project.yml for user-visible versions.
 - `Services/OfflineMapManager.swift` — MapLibre offline packs (download /
   list / delete regions), bounding-box helpers.
 - `Views/MapLibreView.swift` — UIViewRepresentable over MLNMapView, shared
-  by Drive and the planner: markers, path polyline, course-follow camera,
-  tap-to-coordinate.
+  by Drive and the planner: markers, route line (a style layer, so it can
+  be dashed), course-follow camera, tap-to-coordinate, theme switching.
+- **Map themes** (`MapTheme`, stored in `@AppStorage("mapTheme")`):
+  Standard (OpenFreeMap liberty) and Explorer — a bundled parchment style
+  (`Resources/ParchmentStyle.json`, same tile source so offline packs
+  serve both) plus `ParchmentOverlay` (vignette/frame/compass rose),
+  serif HUD fonts, and sepia marker art.
 - `Views/` — four tabs: Drive (full-screen map HUD, quick-mark buttons,
   route picker), Routes (list/share/plan via RoutePlannerView), Features
   (list/delete), Offline (download map regions).

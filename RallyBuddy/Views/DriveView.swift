@@ -16,6 +16,11 @@ struct DriveView: View {
 
     @State private var pendingPoint: PendingPoint?
     @State private var recenterToken = 0
+    @AppStorage("mapTheme") private var mapThemeRaw = MapTheme.standard.rawValue
+
+    private var mapTheme: MapTheme {
+        MapTheme(rawValue: mapThemeRaw) ?? .standard
+    }
 
     var body: some View {
         MapLibreView(
@@ -27,6 +32,7 @@ struct DriveView: View {
                 )
             },
             pathCoordinates: activeRoute?.path ?? [],
+            theme: mapTheme,
             followsCourse: locationService.isTracking,
             fitPathOnChange: true,
             recenterToken: recenterToken,
@@ -38,10 +44,15 @@ struct DriveView: View {
             }
         )
         .ignoresSafeArea()
+        .overlay {
+            if mapTheme == .explorer {
+                ParchmentOverlay()
+            }
+        }
         .safeAreaInset(edge: .bottom) { controls }
         .overlay(alignment: .top) {
             if let next = alertEngine.upcoming.first {
-                CalloutBanner(item: next)
+                CalloutBanner(item: next, serif: mapTheme == .explorer)
             }
         }
         .onAppear { locationService.requestPermission() }
@@ -63,7 +74,10 @@ struct DriveView: View {
         VStack(spacing: 10) {
             if locationService.isTracking {
                 HStack(spacing: 10) {
-                    SpeedPill(speed: locationService.location?.speed)
+                    SpeedPill(
+                        speed: locationService.location?.speed,
+                        serif: mapTheme == .explorer
+                    )
                     ForEach(RoadFeatureType.allCases) { type in
                         QuickMarkButton(type: type) { quickMark(type) }
                     }
@@ -80,6 +94,18 @@ struct DriveView: View {
                 HStack(spacing: 12) {
                     routeMenu
                     Spacer()
+                    Menu {
+                        Picker("Map style", selection: $mapThemeRaw) {
+                            ForEach(MapTheme.allCases) { theme in
+                                Label(theme.label, systemImage: theme.systemImage)
+                                    .tag(theme.rawValue)
+                            }
+                        }
+                    } label: {
+                        Image(systemName: mapTheme.systemImage)
+                            .padding(6)
+                    }
+                    .buttonStyle(.bordered)
                     Button {
                         recenterToken += 1
                     } label: {
@@ -92,7 +118,7 @@ struct DriveView: View {
                     } label: {
                         Label("Start Drive", systemImage: "flag.checkered")
                             .font(.headline)
-                            .padding(.horizontal, 8)
+                            .fixedSize()
                             .padding(.vertical, 6)
                     }
                     .buttonStyle(.borderedProminent)
@@ -128,6 +154,8 @@ struct DriveView: View {
                 systemImage: "point.topleft.down.to.point.bottomright.curvepath"
             )
             .lineLimit(1)
+            .truncationMode(.tail)
+            .frame(maxWidth: activeRoute == nil ? nil : 130, alignment: .leading)
         }
         .disabled(routes.isEmpty)
     }
@@ -186,11 +214,12 @@ struct QuickMarkButton: View {
 
 struct SpeedPill: View {
     let speed: CLLocationSpeed?
+    var serif = false
 
     var body: some View {
         VStack(spacing: 0) {
             Text(speedText)
-                .font(.system(size: 30, weight: .bold, design: .rounded))
+                .font(.system(size: 30, weight: .bold, design: serif ? .serif : .rounded))
                 .monospacedDigit()
             Text("km/h")
                 .font(.caption2)
@@ -208,17 +237,22 @@ struct SpeedPill: View {
 
 struct CalloutBanner: View {
     let item: UpcomingFeature
+    var serif = false
+
+    private var titleFont: Font {
+        .system(.title3, design: serif ? .serif : .default).bold()
+    }
 
     var body: some View {
         HStack(spacing: 14) {
-            Image(systemName: item.feature.type.systemImage)
+            Image(systemName: serif ? item.feature.type.explorerSymbol : item.feature.type.systemImage)
                 .font(.title)
                 .foregroundStyle(item.feature.type.tint)
             Text(item.feature.type.label)
-                .font(.title3.bold())
+                .font(titleFont)
             Spacer()
             Text("\(Int(item.distance)) m")
-                .font(.title3.bold())
+                .font(titleFont)
                 .monospacedDigit()
         }
         .padding()

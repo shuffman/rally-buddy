@@ -1,0 +1,128 @@
+{
+  "version": 8,
+  "name": "Rally Buddy Explorer",
+  "sources": {
+    "openmaptiles": {
+      "type": "vector",
+      "url": "https://tiles.openfreemap.org/planet"
+    }
+  },
+  "glyphs": "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": { "background-color": "#EDE2C4" }
+    },
+    {
+      "id": "park",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "park",
+      "paint": { "fill-color": "#DFD9AE", "fill-opacity": 0.5 }
+    },
+    {
+      "id": "water",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "water",
+      "paint": { "fill-color": "#A9BEB4", "fill-opacity": 0.9 }
+    },
+    {
+      "id": "waterway",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "waterway",
+      "paint": {
+        "line-color": "#A9BEB4",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.5, 14, 2, 16, 4]
+      }
+    },
+    {
+      "id": "roads-minor",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 11,
+      "filter": ["match", ["get", "class"], ["tertiary", "minor", "service"], true, false],
+      "layout": { "line-cap": "round", "line-join": "round" },
+      "paint": {
+        "line-color": "#9A7E58",
+        "line-opacity": 0.55,
+        "line-width": ["interpolate", ["linear"], ["zoom"], 11, 0.3, 14, 1.1, 16, 2.5]
+      }
+    },
+    {
+      "id": "roads-main",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 7,
+      "filter": ["match", ["get", "class"], ["primary", "secondary"], true, false],
+      "layout": { "line-cap": "round", "line-join": "round" },
+      "paint": {
+        "line-color": "#6F4E2E",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 7, 0.6, 10, 1.4, 14, 3, 16, 5]
+      }
+    },
+    {
+      "id": "roads-highway",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 5,
+      "filter": ["match", ["get", "class"], ["motorway", "trunk"], true, false],
+      "layout": { "line-cap": "round", "line-join": "round" },
+      "paint": {
+        "line-color": "#5C3E21",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 5, 0.8, 10, 2.2, 14, 4.5, 16, 7]
+      }
+    },
+    {
+      "id": "boundary",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "boundary",
+      "filter": ["all", ["<=", ["get", "admin_level"], 4], ["!=", ["get", "maritime"], 1]],
+      "paint": {
+        "line-color": "#8A745A",
+        "line-width": 1,
+        "line-dasharray": [3, 2]
+      }
+    },
+    {
+      "id": "water-name",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "water_name",
+      "layout": {
+        "text-field": ["get", "name"],
+        "text-font": ["Noto Sans Italic"],
+        "text-size": 12
+      },
+      "paint": {
+        "text-color": "#6E8177",
+        "text-halo-color": "#EDE2C4",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "place-labels",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "place",
+      "filter": ["match", ["get", "class"], ["city", "town", "village"], true, false],
+      "layout": {
+        "text-field": ["get", "name"],
+        "text-font": ["Noto Sans Italic"],
+        "text-size": ["match", ["get", "class"], "city", 16, "town", 13, 11],
+        "text-letter-spacing": 0.08
+      },
+      "paint": {
+        "text-color": "#57432C",
+        "text-halo-color": "#EDE2C4",
+        "text-halo-width": 1.4
+      }
+    }
+  ]
+}

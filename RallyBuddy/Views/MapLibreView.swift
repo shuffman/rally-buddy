@@ -30,10 +30,12 @@ struct MapMarker: Equatable {
 
 /// SwiftUI wrapper around MLNMapView (MapLibre) used by both the drive
 /// screen and the route planner. Renders OpenFreeMap vector tiles, which
-/// the OfflineMapManager can download for offline use.
+/// the OfflineMapManager can download for offline use. The route is drawn
+/// as a style layer so it can be dashed (Explorer's dotted trail).
 struct MapLibreView: UIViewRepresentable {
     var markers: [MapMarker] = []
     var pathCoordinates: [CLLocationCoordinate2D] = []
+    var theme: MapTheme = .standard
     var followsCourse: Bool = false
     /// When the path changes while not following, zoom to fit it.
     var fitPathOnChange: Bool = false
@@ -46,10 +48,11 @@ struct MapLibreView: UIViewRepresentable {
     }
 
     func makeUIView(context: Context) -> MLNMapView {
-        let mapView = MLNMapView(frame: .zero, styleURL: OfflineMapManager.styleURL)
+        let mapView = MLNMapView(frame: .zero, styleURL: theme.styleURL)
         mapView.delegate = context.coordinator
         mapView.showsUserLocation = true
         mapView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        context.coordinator.theme = theme
 
         let tap = UITapGestureRecognizer(
             target: context.coordinator,
@@ -67,7 +70,14 @@ struct MapLibreView: UIViewRepresentable {
         let coordinator = context.coordinator
         coordinator.onTap = onTap
 
-        if coordinator.markers != markers {
+        let themeChanged = coordinator.theme != theme
+        if themeChanged {
+            coordinator.theme = theme
+            // Style reload wipes layers; didFinishLoading re-adds the route.
+            mapView.styleURL = theme.styleURL
+        }
+
+        if coordinator.markers != markers || themeChanged {
             coordinator.markers = markers
             if !coordinator.markerAnnotations.isEmpty {
                 mapView.removeAnnotations(coordinator.markerAnnotations)
@@ -77,46 +87,46 @@ struct MapLibreView: UIViewRepresentable {
                 annotation.coordinate = marker.coordinate
                 switch marker.kind {
                 case .feature(let type):
-                    annotation.reuseKey = "feature-\(type.rawValue)"
+                    annotation.reuseKey = "\(theme.rawValue)-feature-\(type.rawValue)"
                     annotation.tint = UIColor(type.tint)
-                    annotation.symbolName = type.systemImage
+                    annotation.symbolName = theme == .explorer
+                        ? type.explorerSymbol : type.systemImage
                 case .waypoint(let number):
-                    annotation.reuseKey = "waypoint-\(number)"
+                    annotation.reuseKey = "\(theme.rawValue)-waypoint-\(number)"
                     annotation.tint = .systemBlue
                     annotation.textLabel = "\(number)"
                 }
+                annotation.isExplorer = theme == .explorer
                 return annotation
             }
             mapView.addAnnotations(coordinator.markerAnnotations)
         }
 
-        let path = pathCoordinates
-        if coordinator.pathLatLons != path.map({ [$0.latitude, $0.longitude] }) {
-            coordinator.pathLatLons = path.map { [$0.latitude, $0.longitude] }
-            if let existing = coordinator.polyline {
-                mapView.removeAnnotation(existing)
-                coordinator.polyline = nil
+        let pathLatLons = pathCoordinates.map { [$0.latitude, $0.longitude] }
+        if coordinator.pathLatLons != pathLatLons || themeChanged {
+            let pathChanged = coordinator.pathLatLons != pathLatLons
+            coordinator.pathLatLons = pathLatLons
+            if let style = mapView.style {
+                coordinator.updateRouteLayer(on: style)
             }
-            if path.count >= 2 {
-                var coords = path
-                let polyline = MLNPolyline(coordinates: &coords, count: UInt(coords.count))
-                coordinator.polyline = polyline
-                mapView.addAnnotation(polyline)
-                if fitPathOnChange, !followsCourse {
-                    mapView.setVisibleCoordinates(
-                        &coords,
-                        count: UInt(coords.count),
-                        edgePadding: UIEdgeInsets(top: 80, left: 50, bottom: 140, right: 50),
-                        animated: true
-                    )
-                }
+            if pathChanged, fitPathOnChange, !followsCourse, pathCoordinates.count >= 2 {
+                var coords = pathCoordinates
+                mapView.setVisibleCoordinates(
+                    &coords,
+                    count: UInt(coords.count),
+                    edgePadding: UIEdgeInsets(top: 80, left: 50, bottom: 140, right: 50),
+                    animated: true
+                )
             }
         }
 
-        let desiredMode: MLNUserTrackingMode = followsCourse ? .followWithCourse : .none
         if followsCourse != coordinator.wasFollowingCourse {
             coordinator.wasFollowingCourse = followsCourse
-            mapView.setUserTrackingMode(desiredMode, animated: true, completionHandler: nil)
+            mapView.setUserTrackingMode(
+                followsCourse ? .followWithCourse : .none,
+                animated: true,
+                completionHandler: nil
+            )
         }
 
         if recenterToken != coordinator.lastRecenterToken {
@@ -132,18 +142,72 @@ struct MapLibreView: UIViewRepresentable {
     @MainActor
     final class Coordinator: NSObject, @preconcurrency MLNMapViewDelegate {
         var onTap: ((CLLocationCoordinate2D) -> Void)?
+        var theme: MapTheme = .standard
         var markers: [MapMarker] = []
         var markerAnnotations: [MarkerAnnotation] = []
         var pathLatLons: [[Double]] = []
-        var polyline: MLNPolyline?
         var wasFollowingCourse = false
         var lastRecenterToken = 0
         private var hasCenteredOnUser = false
+
+        private static let routeSourceID = "rallybuddy-route-source"
+        private static let routeLayerID = "rallybuddy-route-line"
 
         @objc func handleTap(_ gesture: UITapGestureRecognizer) {
             guard let mapView = gesture.view as? MLNMapView, let onTap else { return }
             let point = gesture.location(in: mapView)
             onTap(mapView.convert(point, toCoordinateFrom: mapView))
+        }
+
+        func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
+            updateRouteLayer(on: style)
+        }
+
+        /// Creates or refreshes the route source + line layer to match the
+        /// current path and theme.
+        func updateRouteLayer(on style: MLNStyle) {
+            let coordinates = pathLatLons.map {
+                CLLocationCoordinate2D(latitude: $0[0], longitude: $0[1])
+            }
+
+            let shape: MLNShape
+            if coordinates.count >= 2 {
+                var coords = coordinates
+                shape = MLNPolylineFeature(coordinates: &coords, count: UInt(coords.count))
+            } else {
+                shape = MLNShapeCollectionFeature(shapes: [])
+            }
+
+            let source: MLNShapeSource
+            if let existing = style.source(withIdentifier: Self.routeSourceID) as? MLNShapeSource {
+                source = existing
+                source.shape = shape
+            } else {
+                source = MLNShapeSource(identifier: Self.routeSourceID, shape: shape, options: nil)
+                style.addSource(source)
+            }
+
+            if let old = style.layer(withIdentifier: Self.routeLayerID) {
+                style.removeLayer(old)
+            }
+            let layer = MLNLineStyleLayer(identifier: Self.routeLayerID, source: source)
+            layer.lineCap = NSExpression(forConstantValue: "round")
+            layer.lineJoin = NSExpression(forConstantValue: "round")
+            switch theme {
+            case .standard:
+                layer.lineColor = NSExpression(forConstantValue: UIColor.systemBlue)
+                layer.lineOpacity = NSExpression(forConstantValue: 0.75)
+                layer.lineWidth = NSExpression(forConstantValue: 5)
+            case .explorer:
+                // Dotted trail, like footprints across a treasure map.
+                layer.lineColor = NSExpression(
+                    forConstantValue: UIColor(red: 0.35, green: 0.23, blue: 0.10, alpha: 1)
+                )
+                layer.lineOpacity = NSExpression(forConstantValue: 0.9)
+                layer.lineWidth = NSExpression(forConstantValue: 6)
+                layer.lineDashPattern = NSExpression(forConstantValue: [0.1, 1.9])
+            }
+            style.addLayer(layer)
         }
 
         func mapView(_ mapView: MLNMapView, didUpdate userLocation: MLNUserLocation?) {
@@ -163,7 +227,8 @@ struct MapLibreView: UIViewRepresentable {
                 image: Self.markerImage(
                     symbolName: marker.symbolName,
                     textLabel: marker.textLabel,
-                    tint: marker.tint
+                    tint: marker.tint,
+                    explorer: marker.isExplorer
                 ),
                 reuseIdentifier: marker.reuseKey
             )
@@ -173,26 +238,25 @@ struct MapLibreView: UIViewRepresentable {
             false
         }
 
-        func mapView(_ mapView: MLNMapView, strokeColorForShapeAnnotation annotation: MLNShape) -> UIColor {
-            .systemBlue
-        }
-
-        func mapView(_ mapView: MLNMapView, alphaForShapeAnnotation annotation: MLNShape) -> CGFloat {
-            0.75
-        }
-
-        func mapView(_ mapView: MLNMapView, lineWidthForPolylineAnnotation annotation: MLNPolyline) -> CGFloat {
-            5
-        }
-
-        static func markerImage(symbolName: String?, textLabel: String?, tint: UIColor) -> UIImage {
+        static func markerImage(
+            symbolName: String?,
+            textLabel: String?,
+            tint: UIColor,
+            explorer: Bool
+        ) -> UIImage {
             let size = CGSize(width: 38, height: 38)
-            return UIGraphicsImageRenderer(size: size).image { context in
+            let parchment = UIColor(red: 0.95, green: 0.91, blue: 0.80, alpha: 1)
+            let ink = UIColor(red: 0.31, green: 0.23, blue: 0.13, alpha: 1)
+            let fill = explorer ? parchment : tint
+            let stroke = explorer ? ink : UIColor.white
+            let content = explorer ? ink : UIColor.white
+
+            return UIGraphicsImageRenderer(size: size).image { _ in
                 let circle = CGRect(origin: .zero, size: size).insetBy(dx: 2, dy: 2)
-                tint.setFill()
-                UIColor.white.setStroke()
+                fill.setFill()
+                stroke.setStroke()
                 let path = UIBezierPath(ovalIn: circle)
-                path.lineWidth = 3
+                path.lineWidth = explorer ? 2.5 : 3
                 path.fill()
                 path.stroke()
 
@@ -200,17 +264,20 @@ struct MapLibreView: UIViewRepresentable {
                     let symbol = UIImage(
                         systemName: symbolName,
                         withConfiguration: UIImage.SymbolConfiguration(pointSize: 15, weight: .bold)
-                    )?.withTintColor(.white, renderingMode: .alwaysOriginal)
+                    )?.withTintColor(content, renderingMode: .alwaysOriginal)
                 {
-                    let origin = CGPoint(
+                    symbol.draw(at: CGPoint(
                         x: (size.width - symbol.size.width) / 2,
                         y: (size.height - symbol.size.height) / 2
-                    )
-                    symbol.draw(at: origin)
+                    ))
                 } else if let textLabel {
+                    let font = explorer
+                        ? UIFont(name: "TimesNewRomanPS-BoldMT", size: 17)
+                            ?? UIFont.systemFont(ofSize: 17, weight: .bold)
+                        : UIFont.systemFont(ofSize: 17, weight: .bold)
                     let attributes: [NSAttributedString.Key: Any] = [
-                        .font: UIFont.systemFont(ofSize: 17, weight: .bold),
-                        .foregroundColor: UIColor.white,
+                        .font: font,
+                        .foregroundColor: content,
                     ]
                     let textSize = (textLabel as NSString).size(withAttributes: attributes)
                     (textLabel as NSString).draw(
@@ -231,4 +298,5 @@ final class MarkerAnnotation: MLNPointAnnotation {
     var tint: UIColor = .systemRed
     var symbolName: String?
     var textLabel: String?
+    var isExplorer = false
 }

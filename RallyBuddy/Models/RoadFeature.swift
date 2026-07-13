@@ -44,6 +44,15 @@ enum RoadFeatureType: String, Codable, CaseIterable, Identifiable {
         }
     }
 
+    /// Marker glyph on the Explorer's Map skin — old-map flavored.
+    var explorerSymbol: String {
+        switch self {
+        case .passingLane: "arrow.left.arrow.right"
+        case .residentialZone: "house.fill"
+        case .tightCorner: "lizard.fill"  // here be dragons
+        }
+    }
+
     var tint: Color {
         switch self {
         case .passingLane: .green

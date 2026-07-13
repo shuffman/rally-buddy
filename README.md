@@ -29,6 +29,9 @@ Native SwiftUI iOS app. All data stays on your device.
 - **Offline maps** — download regions (around you, or a corridor around a
   route) for full-detail maps with zero signal; OpenStreetMap data via
   MapLibre + OpenFreeMap
+- **Explorer's Map skin** — optional old-timey parchment style: sepia ink
+  roads, dotted treasure-trail route, compass rose, here-be-dragons corner
+  markers
 
 Planned: CarPlay, live peer-to-peer nearby sync, off-route detection.
 

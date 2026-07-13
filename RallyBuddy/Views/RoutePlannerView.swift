@@ -16,6 +16,7 @@ struct RoutePlannerView: View {
     @State private var showingSavePrompt = false
     @State private var routeName = ""
     @State private var planTask: Task<Void, Never>?
+    @AppStorage("mapTheme") private var mapThemeRaw = MapTheme.standard.rawValue
 
     var body: some View {
         NavigationStack {
@@ -28,6 +29,7 @@ struct RoutePlannerView: View {
                     )
                 },
                 pathCoordinates: plannedPath,
+                theme: MapTheme(rawValue: mapThemeRaw) ?? .standard,
                 onTap: { coordinate in
                     addWaypoint(coordinate)
                 }

@@ -93,6 +93,17 @@ or the attachment) and choose Rally Buddy. The route and its features are
 imported. Features nearly identical to ones you already have are skipped,
 so importing twice won't create duplicates.
 
+## Map styles
+
+Two looks, switchable any time with the scroll/map button at the bottom of
+the Drive screen:
+
+- **Standard** — the full modern map.
+- **Explorer's Map** — a parchment chart in sepia ink: roads drawn like an
+  old atlas, your route as a dotted trail, a compass rose, and aged edges.
+  Tight corners are marked with a dragon, naturally. Same map data
+  underneath, so offline downloads work in both styles.
+
 ## Offline maps
 
 Driving with no cell signal? GPS, callouts, routes, and features all work
