@@ -31,8 +31,13 @@ out what's ahead — spoken audio plus a glanceable heads-up view.
   current location + course, haptic + spoken confirmation, no announcement
   for self-marked features). Map-tap annotation is only available when not
   driving. Tab bar hides during a drive.
-- **MapKit** (agreed 2026-07-12): easiest that's pretty good — no API keys,
-  no SDK dependency, free MKDirections routing.
+- **Map display: MapLibre + OpenFreeMap** (agreed 2026-07-12, superseding
+  the earlier MapKit choice): switched so map regions can be **downloaded
+  for offline use** (Apple provides no offline API for MapKit).
+  Vector tiles from tiles.openfreemap.org (style "liberty", free, no key,
+  © OpenStreetMap contributors). Offline packs are tile pyramids z0–14 via
+  MLNOfflineStorage. **MKDirections is still used for route planning**
+  (online-only; plan at home, drive offline).
 
 ## Build
 
@@ -91,9 +96,14 @@ MARKETING_VERSION in project.yml for user-visible versions.
 - `Services/SpeechService.swift` — AVSpeechSynthesizer with audio ducking.
 - `Services/RouteBuilder.swift` — MKDirections leg-by-leg planning.
 - `Services/RouteShare.swift` — `.rallybuddy` export (Transferable) + import.
-- `Views/` — three tabs: Drive (full-screen map HUD, quick-mark buttons,
+- `Services/OfflineMapManager.swift` — MapLibre offline packs (download /
+  list / delete regions), bounding-box helpers.
+- `Views/MapLibreView.swift` — UIViewRepresentable over MLNMapView, shared
+  by Drive and the planner: markers, path polyline, course-follow camera,
+  tap-to-coordinate.
+- `Views/` — four tabs: Drive (full-screen map HUD, quick-mark buttons,
   route picker), Routes (list/share/plan via RoutePlannerView), Features
-  (list/delete).
+  (list/delete), Offline (download map regions).
 
 ## Open questions / recorded assumptions
 
@@ -109,3 +119,6 @@ MARKETING_VERSION in project.yml for user-visible versions.
   per-leg results if this becomes a problem.
 - **Off-route detection** while driving a route: not implemented; the route
   is currently just drawn on the map.
+- **OpenFreeMap has no formal SLA or offline-bulk policy**; downloads are
+  region-sized (tens of MB), which is polite use. If the app ever grows a
+  real user base, self-host the tiles or switch to a paid tile plan.

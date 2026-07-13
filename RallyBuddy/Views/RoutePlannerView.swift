@@ -1,5 +1,4 @@
 import CoreLocation
-import MapKit
 import SwiftData
 import SwiftUI
 
@@ -20,27 +19,19 @@ struct RoutePlannerView: View {
 
     var body: some View {
         NavigationStack {
-            MapReader { proxy in
-                Map {
-                    UserAnnotation()
-                    if !plannedPath.isEmpty {
-                        MapPolyline(coordinates: plannedPath)
-                            .stroke(
-                                .blue.opacity(0.7),
-                                style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round)
-                            )
-                    }
-                    ForEach(Array(waypoints.enumerated()), id: \.offset) { index, coordinate in
-                        Marker("\(index + 1)", coordinate: coordinate)
-                            .tint(.blue)
-                    }
+            MapLibreView(
+                markers: waypoints.enumerated().map { index, coordinate in
+                    MapMarker(
+                        id: "wp-\(index)",
+                        coordinate: coordinate,
+                        kind: .waypoint(index + 1)
+                    )
+                },
+                pathCoordinates: plannedPath,
+                onTap: { coordinate in
+                    addWaypoint(coordinate)
                 }
-                .onTapGesture(coordinateSpace: .local) { point in
-                    if let coordinate = proxy.convert(point, from: .local) {
-                        addWaypoint(coordinate)
-                    }
-                }
-            }
+            )
             .navigationTitle("Plan Route")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

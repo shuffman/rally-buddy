@@ -26,6 +26,9 @@ Native SwiftUI iOS app. All data stays on your device.
   roads via MKDirections
 - **Route sharing** — AirDrop a route and every marked feature along it as
   a `.rallybuddy` file; opening one imports it, duplicates skipped
+- **Offline maps** — download regions (around you, or a corridor around a
+  route) for full-detail maps with zero signal; OpenStreetMap data via
+  MapLibre + OpenFreeMap
 
 Planned: CarPlay, live peer-to-peer nearby sync, off-route detection.
 

@@ -93,7 +93,31 @@ or the attachment) and choose Rally Buddy. The route and its features are
 imported. Features nearly identical to ones you already have are skipped,
 so importing twice won't create duplicates.
 
+## Offline maps
+
+Driving with no cell signal? GPS, callouts, routes, and features all work
+without a connection — only the background map needs data, and you can
+download that ahead of time:
+
+1. Go to the **Offline** tab.
+2. Tap **"Area around me (40 km)"** to grab the region you're in, or tap a
+   route name to download a corridor around that route.
+3. The download runs with a progress indicator; a green checkmark means
+   it's complete. A 40 km area is roughly 30–60 MB — use Wi-Fi.
+
+Downloaded areas render at full street detail with no signal at all.
+Swipe left on an area to delete it and free the space.
+
+Two things still need a connection: **planning** a new route (road
+snapping uses an online service) and downloading new map areas. Plan at
+home, drive anywhere.
+
 ## Troubleshooting
+
+**The map is blank or fuzzy while driving in the backcountry.**
+You're offline and that area isn't downloaded. Everything still works —
+callouts, route line, features — but to get the full map, download the
+area from the Offline tab next time you're on Wi-Fi.
 
 **No spoken callouts while driving.**
 Check the ring/silent switch and volume. Callouts play through whatever

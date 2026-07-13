@@ -4,12 +4,18 @@ options:
   deploymentTarget:
     iOS: "18.0"
   createIntermediateGroups: true
+packages:
+  MapLibre:
+    url: https://github.com/maplibre/maplibre-gl-native-distribution
+    from: "6.0.0"
 targets:
   RallyBuddy:
     type: application
     platform: iOS
     sources:
       - RallyBuddy
+    dependencies:
+      - package: MapLibre
     scheme:
       testTargets: []
     settings:

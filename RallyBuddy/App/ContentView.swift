@@ -4,6 +4,7 @@ import SwiftUI
 struct ContentView: View {
     @State private var locationService = LocationService()
     @State private var alertEngine = AlertEngine(speech: SpeechService())
+    @State private var offlineManager = OfflineMapManager()
     @State private var activeRoute: Route?
     @State private var importErrorMessage: String?
     @State private var showingImportError = false
@@ -30,6 +31,12 @@ struct ContentView: View {
 
             FeatureListTab()
                 .tabItem { Label("Features", systemImage: "list.bullet") }
+
+            OfflineMapsTab(
+                locationService: locationService,
+                offlineManager: offlineManager
+            )
+            .tabItem { Label("Offline", systemImage: "arrow.down.circle") }
         }
         .onOpenURL { url in
             guard url.pathExtension.lowercased() == "rallybuddy" else { return }

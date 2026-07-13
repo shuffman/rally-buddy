@@ -1,5 +1,4 @@
 import CoreLocation
-import MapKit
 import SwiftData
 import SwiftUI
 import UIKit
@@ -15,42 +14,30 @@ struct DriveView: View {
     @Query private var features: [RoadFeature]
     @Query(sort: \Route.createdAt, order: .reverse) private var routes: [Route]
 
-    @State private var position: MapCameraPosition = .userLocation(fallback: .automatic)
     @State private var pendingPoint: PendingPoint?
+    @State private var recenterToken = 0
 
     var body: some View {
-        MapReader { proxy in
-            Map(position: $position) {
-                UserAnnotation()
-                if let activeRoute {
-                    MapPolyline(coordinates: activeRoute.path)
-                        .stroke(
-                            .blue.opacity(0.7),
-                            style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round)
-                        )
-                }
-                ForEach(features) { feature in
-                    Marker(
-                        feature.type.label,
-                        systemImage: feature.type.systemImage,
-                        coordinate: feature.coordinate
-                    )
-                    .tint(feature.type.tint)
-                }
-            }
-            .mapControls {
-                MapUserLocationButton()
-                MapCompass()
-            }
-            .onTapGesture(coordinateSpace: .local) { point in
+        MapLibreView(
+            markers: features.map { feature in
+                MapMarker(
+                    id: "f-\(feature.createdAt.timeIntervalSince1970)",
+                    coordinate: feature.coordinate,
+                    kind: .feature(feature.type)
+                )
+            },
+            pathCoordinates: activeRoute?.path ?? [],
+            followsCourse: locationService.isTracking,
+            fitPathOnChange: true,
+            recenterToken: recenterToken,
+            onTap: { coordinate in
                 // Map-tap annotation is a parked-car activity; while driving,
                 // marking happens through the big buttons only.
                 guard !locationService.isTracking else { return }
-                if let coordinate = proxy.convert(point, from: .local) {
-                    pendingPoint = PendingPoint(coordinate: coordinate)
-                }
+                pendingPoint = PendingPoint(coordinate: coordinate)
             }
-        }
+        )
+        .ignoresSafeArea()
         .safeAreaInset(edge: .bottom) { controls }
         .overlay(alignment: .top) {
             if let next = alertEngine.upcoming.first {
@@ -93,6 +80,13 @@ struct DriveView: View {
                 HStack(spacing: 12) {
                     routeMenu
                     Spacer()
+                    Button {
+                        recenterToken += 1
+                    } label: {
+                        Image(systemName: "location.fill")
+                            .padding(6)
+                    }
+                    .buttonStyle(.bordered)
                     Button {
                         startDrive()
                     } label: {
@@ -155,14 +149,12 @@ struct DriveView: View {
     }
 
     private func startDrive() {
-        position = .userLocation(followsHeading: true, fallback: .automatic)
         locationService.startTracking()
     }
 
     private func endDrive() {
         locationService.stopTracking()
         alertEngine.reset()
-        position = .userLocation(fallback: .automatic)
     }
 }
 
