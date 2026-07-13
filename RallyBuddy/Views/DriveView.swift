@@ -29,7 +29,8 @@ struct DriveView: View {
                     id: "f-\(feature.createdAt.timeIntervalSince1970)",
                     coordinate: feature.coordinate,
                     kind: .feature(feature.type),
-                    suggested: feature.isSuggested
+                    suggested: feature.isSuggested,
+                    chevrons: feature.type == .tightCorner ? feature.chevronCount : nil
                 )
             },
             pathCoordinates: activeRoute?.path ?? [],
@@ -79,8 +80,18 @@ struct DriveView: View {
                         speed: locationService.location?.speed,
                         serif: mapTheme == .explorer
                     )
-                    ForEach(RoadFeatureType.allCases) { type in
-                        QuickMarkButton(type: type) { quickMark(type) }
+                    QuickMarkButton(type: .passingLane) { quickMark(.passingLane) }
+                    QuickMarkButton(type: .residentialZone) { quickMark(.residentialZone) }
+                }
+                HStack(spacing: 10) {
+                    CornerQuickButton(chevrons: 1, label: "Mild") {
+                        quickMark(.tightCorner, severity: 1)
+                    }
+                    CornerQuickButton(chevrons: 2, label: "Tight") {
+                        quickMark(.tightCorner, severity: 2)
+                    }
+                    CornerQuickButton(chevrons: 3, label: "Hairpin") {
+                        quickMark(.tightCorner, severity: 3)
                     }
                 }
                 Button {
@@ -163,18 +174,19 @@ struct DriveView: View {
 
     // MARK: - Actions
 
-    private func quickMark(_ type: RoadFeatureType) {
+    private func quickMark(_ type: RoadFeatureType, severity: Int = 2) {
         guard let location = locationService.location else { return }
         let feature = RoadFeature(
             type: type,
             coordinate: location.coordinate,
-            bearing: location.course >= 0 ? location.course : nil
+            bearing: location.course >= 0 ? location.course : nil,
+            severity: severity
         )
         modelContext.insert(feature)
         // Don't call out the feature the driver just marked themselves.
         alertEngine.suppress(feature)
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        alertEngine.speech.say("Marked \(type.spokenName.lowercased())")
+        alertEngine.speech.say("Marked \(feature.spokenName.lowercased())")
     }
 
     private func startDrive() {
@@ -213,6 +225,30 @@ struct QuickMarkButton: View {
     }
 }
 
+struct CornerQuickButton: View {
+    let chevrons: Int
+    let label: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 4) {
+                HStack(spacing: -3) {
+                    ForEach(0..<chevrons, id: \.self) { _ in
+                        Image(systemName: "chevron.right")
+                    }
+                }
+                .font(.title3.bold())
+                Text(label)
+                    .font(.caption.bold())
+            }
+            .frame(maxWidth: .infinity, minHeight: 56)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(.red)
+    }
+}
+
 struct SpeedPill: View {
     let speed: CLLocationSpeed?
     var serif = false
@@ -246,10 +282,20 @@ struct CalloutBanner: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            Image(systemName: serif ? item.feature.type.explorerSymbol : item.feature.type.systemImage)
-                .font(.title)
+            if item.feature.type == .tightCorner {
+                HStack(spacing: -6) {
+                    ForEach(0..<item.feature.chevronCount, id: \.self) { _ in
+                        Image(systemName: "chevron.right")
+                    }
+                }
+                .font(.title.bold())
                 .foregroundStyle(item.feature.type.tint)
-            Text(item.feature.type.label)
+            } else {
+                Image(systemName: serif ? item.feature.type.explorerSymbol : item.feature.type.systemImage)
+                    .font(.title)
+                    .foregroundStyle(item.feature.type.tint)
+            }
+            Text(item.feature.displayLabel)
                 .font(titleFont)
             Spacer()
             Text("\(Int(item.distance)) m")

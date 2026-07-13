@@ -15,7 +15,16 @@ struct FeatureListTab: View {
                             .foregroundStyle(feature.type.tint)
                         VStack(alignment: .leading) {
                             HStack(spacing: 6) {
-                                Text(feature.type.label)
+                                Text(feature.displayLabel)
+                                if feature.type == .tightCorner {
+                                    HStack(spacing: -4) {
+                                        ForEach(0..<feature.chevronCount, id: \.self) { _ in
+                                            Image(systemName: "chevron.right")
+                                        }
+                                    }
+                                    .font(.caption.bold())
+                                    .foregroundStyle(.red)
+                                }
                                 if feature.isSuggested {
                                     Text("SUGGESTED")
                                         .font(.caption2.bold())

@@ -11,7 +11,11 @@ struct UpcomingFeature: Identifiable {
 
     var announcement: String {
         let rounded = Int(max(50, (distance / 50).rounded() * 50))
-        return "\(feature.type.spokenName) in \(rounded) meters"
+        var phrase = "\(feature.spokenName) in \(rounded) meters"
+        if feature.type == .tightCorner, feature.chevronCount == 3 {
+            phrase += ". Slow down"
+        }
+        return phrase
     }
 }
 

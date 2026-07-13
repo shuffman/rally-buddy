@@ -17,13 +17,22 @@ struct MapMarker: Equatable {
     let kind: Kind
     /// Auto-detected, not yet confirmed by the user — drawn dashed/faded.
     let suggested: Bool
+    /// Rally chevron count for corner markers (1–3); nil for other kinds.
+    let chevrons: Int?
 
-    init(id: String, coordinate: CLLocationCoordinate2D, kind: Kind, suggested: Bool = false) {
+    init(
+        id: String,
+        coordinate: CLLocationCoordinate2D,
+        kind: Kind,
+        suggested: Bool = false,
+        chevrons: Int? = nil
+    ) {
         self.id = id
         self.latitude = coordinate.latitude
         self.longitude = coordinate.longitude
         self.kind = kind
         self.suggested = suggested
+        self.chevrons = chevrons
     }
 
     var coordinate: CLLocationCoordinate2D {
@@ -91,10 +100,21 @@ struct MapLibreView: UIViewRepresentable {
                 let suffix = marker.suggested ? "-suggested" : ""
                 switch marker.kind {
                 case .feature(let type):
-                    annotation.reuseKey = "\(theme.rawValue)-feature-\(type.rawValue)\(suffix)"
+                    let chevronKey = marker.chevrons.map { "-c\($0)" } ?? ""
+                    annotation.reuseKey =
+                        "\(theme.rawValue)-feature-\(type.rawValue)\(chevronKey)\(suffix)"
                     annotation.tint = UIColor(type.tint)
-                    annotation.symbolName = theme == .explorer
-                        ? type.explorerSymbol : type.systemImage
+                    if type == .tightCorner, let chevrons = marker.chevrons {
+                        // Here be dragons: Explorer draws hairpins as one.
+                        if theme == .explorer, chevrons == 3 {
+                            annotation.symbolName = "lizard.fill"
+                        } else {
+                            annotation.chevronCount = chevrons
+                        }
+                    } else {
+                        annotation.symbolName = theme == .explorer
+                            ? type.explorerSymbol : type.systemImage
+                    }
                 case .waypoint(let number):
                     annotation.reuseKey = "\(theme.rawValue)-waypoint-\(number)\(suffix)"
                     annotation.tint = .systemBlue
@@ -234,7 +254,8 @@ struct MapLibreView: UIViewRepresentable {
                     textLabel: marker.textLabel,
                     tint: marker.tint,
                     explorer: marker.isExplorer,
-                    suggested: marker.isSuggestedMarker
+                    suggested: marker.isSuggestedMarker,
+                    chevrons: marker.chevronCount
                 ),
                 reuseIdentifier: marker.reuseKey
             )
@@ -249,7 +270,8 @@ struct MapLibreView: UIViewRepresentable {
             textLabel: String?,
             tint: UIColor,
             explorer: Bool,
-            suggested: Bool = false
+            suggested: Bool = false,
+            chevrons: Int? = nil
         ) -> UIImage {
             let size = CGSize(width: 38, height: 38)
             let parchment = UIColor(red: 0.95, green: 0.91, blue: 0.80, alpha: 1)
@@ -271,7 +293,27 @@ struct MapLibreView: UIViewRepresentable {
                 path.fill()
                 path.stroke()
 
-                if let symbolName,
+                if let chevrons {
+                    // Rally corner chevrons: », nested, pointing right.
+                    content.setStroke()
+                    let chevronPath = UIBezierPath()
+                    let armHeight: CGFloat = 6.5
+                    let armWidth: CGFloat = 6
+                    let spacing: CGFloat = 6
+                    let total = CGFloat(chevrons - 1) * spacing + armWidth
+                    var x = (size.width - total) / 2 - 1
+                    let cy = size.height / 2
+                    for _ in 0..<chevrons {
+                        chevronPath.move(to: CGPoint(x: x, y: cy - armHeight))
+                        chevronPath.addLine(to: CGPoint(x: x + armWidth, y: cy))
+                        chevronPath.addLine(to: CGPoint(x: x, y: cy + armHeight))
+                        x += spacing
+                    }
+                    chevronPath.lineWidth = 3
+                    chevronPath.lineCapStyle = .round
+                    chevronPath.lineJoinStyle = .round
+                    chevronPath.stroke()
+                } else if let symbolName,
                     let symbol = UIImage(
                         systemName: symbolName,
                         withConfiguration: UIImage.SymbolConfiguration(pointSize: 15, weight: .bold)
@@ -311,4 +353,5 @@ final class MarkerAnnotation: MLNPointAnnotation {
     var textLabel: String?
     var isExplorer = false
     var isSuggestedMarker = false
+    var chevronCount: Int?
 }

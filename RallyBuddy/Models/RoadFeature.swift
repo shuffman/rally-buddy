@@ -74,13 +74,17 @@ final class RoadFeature {
     var createdAt: Date
     /// True for auto-detected features awaiting the user's confirmation.
     var isSuggested: Bool = false
+    /// Corner severity in rally chevrons: 1 = mild, 2 = tight, 3 = hairpin.
+    /// Only meaningful for .tightCorner.
+    var severity: Int = 2
 
     init(
         type: RoadFeatureType,
         coordinate: CLLocationCoordinate2D,
         bearing: Double? = nil,
         note: String = "",
-        isSuggested: Bool = false
+        isSuggested: Bool = false,
+        severity: Int = 2
     ) {
         self.type = type
         self.latitude = coordinate.latitude
@@ -89,6 +93,29 @@ final class RoadFeature {
         self.note = note
         self.createdAt = .now
         self.isSuggested = isSuggested
+        self.severity = severity
+    }
+
+    var chevronCount: Int { min(max(severity, 1), 3) }
+
+    /// Severity-aware display name ("Corner ›" family for corners).
+    var displayLabel: String {
+        guard type == .tightCorner else { return type.label }
+        switch chevronCount {
+        case 3: return "Hairpin"
+        case 2: return "Tight corner"
+        default: return "Corner"
+        }
+    }
+
+    /// Severity-aware name used in spoken callouts.
+    var spokenName: String {
+        guard type == .tightCorner else { return type.spokenName }
+        switch chevronCount {
+        case 3: return "Hairpin"
+        case 2: return "Tight corner"
+        default: return "Corner"
+        }
     }
 
     var coordinate: CLLocationCoordinate2D {

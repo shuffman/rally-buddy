@@ -42,17 +42,28 @@ and save:
 |---|---|---|
 | 🟢 Passing lane | An overtaking lane starts here | "Passing lane in 400 meters" |
 | 🟠 Residential zone | Houses ahead, mind your speed | "Residential zone in 400 meters" |
-| 🔴 Tight corner | A corner that deserves respect | "Tight corner in 400 meters" |
+| 🔴 Corner › ›› ››› | Graded rally-style, see below | "Tight corner in 400 meters" |
+
+Corners are graded in **rally chevrons**, like the roadside boards:
+
+| Grade | Meaning | Callout |
+|---|---|---|
+| › Mild | Noticeable bend, ease off | "Corner in 400 meters" |
+| ›› Tight | Genuinely tight, brake first | "Tight corner in 400 meters" |
+| ››› Hairpin | Switchback territory | "Hairpin in 200 meters. Slow down" |
+
+The marker on the map shows the chevron count (on the Explorer's Map, a
+hairpin is marked with a dragon).
 
 The **"Only for current direction of travel"** toggle makes a feature fire
 only when you're heading the way you are now — useful for a passing lane
 that only exists on one side of the road.
 
-**While driving — one tap.** During a drive, three big buttons sit at the
-bottom of the screen: **Pass**, **Homes**, **Corner**. Tap one as you pass
-the spot; the feature is dropped at your current location and direction,
-confirmed with a buzz and a spoken "Marked". No looking at the screen
-needed.
+**While driving — one tap.** During a drive, the bottom of the screen has
+**Pass** and **Homes** buttons plus a row of three corner buttons —
+**› Mild**, **›› Tight**, **››› Hairpin**. Tap one as you pass the spot;
+the feature is dropped at your current location and direction, confirmed
+with a buzz and a spoken "Marked". No looking at the screen needed.
 
 ## Driving
 
@@ -76,8 +87,10 @@ right on it in the **Routes** tab (or long-press → **Detect Features**),
 useful after the map data improves or for routes shared to you. The scan
 finds:
 
-- **Tight corners** — from the actual geometry of the route (works
-  offline). Each suggestion notes the approximate curve radius.
+- **Corners, graded in chevrons** — from the actual geometry of the route
+  (works offline). Curve radius decides the grade: under ~35 m is a
+  ››› hairpin, under ~75 m is ›› tight, under ~150 m is › mild. Each
+  suggestion notes the measured radius.
 - **Residential zones** — where the route enters residential areas mapped
   in OpenStreetMap (needs internet during the scan).
 - **Passing lanes** — where OpenStreetMap tags an extra travel lane

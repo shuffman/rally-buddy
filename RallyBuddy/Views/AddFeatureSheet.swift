@@ -13,6 +13,7 @@ struct AddFeatureSheet: View {
     @State private var type: RoadFeatureType = .tightCorner
     @State private var note = ""
     @State private var currentDirectionOnly = false
+    @State private var severity = 2
 
     var body: some View {
         NavigationStack {
@@ -24,6 +25,15 @@ struct AddFeatureSheet: View {
                     }
                 }
                 .pickerStyle(.inline)
+
+                if type == .tightCorner {
+                    Picker("How tight?", selection: $severity) {
+                        Text("›  Mild").tag(1)
+                        Text("››  Tight").tag(2)
+                        Text("›››  Hairpin").tag(3)
+                    }
+                    .pickerStyle(.segmented)
+                }
 
                 TextField("Note (optional)", text: $note)
 
@@ -52,7 +62,8 @@ struct AddFeatureSheet: View {
             type: type,
             coordinate: coordinate,
             bearing: currentDirectionOnly ? course : nil,
-            note: note
+            note: note,
+            severity: type == .tightCorner ? severity : 2
         )
         modelContext.insert(feature)
         dismiss()

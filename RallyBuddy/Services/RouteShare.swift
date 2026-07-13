@@ -17,6 +17,8 @@ struct SharedRoute: Codable {
         var longitude: Double
         var bearing: Double?
         var note: String
+        /// Corner chevrons (v3 of the format); nil in older files.
+        var severity: Int? = nil
     }
 
     var version: Int = 1
@@ -54,7 +56,8 @@ struct RouteExport: Transferable {
                 latitude: $0.latitude,
                 longitude: $0.longitude,
                 bearing: $0.bearing,
-                note: $0.note
+                note: $0.note,
+                severity: $0.severity
             )
         }
     }
@@ -152,7 +155,8 @@ enum RouteShareImporter {
                     type: type,
                     coordinate: location.coordinate,
                     bearing: feature.bearing,
-                    note: feature.note
+                    note: feature.note,
+                    severity: feature.severity ?? 2
                 )
             )
         }

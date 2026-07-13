@@ -10,6 +10,8 @@ struct DetectedFeature {
     /// Direction of travel the feature applies to (nil = both).
     let bearing: Double?
     let note: String
+    /// Corner chevrons (1 mild / 2 tight / 3 hairpin); 2 for non-corners.
+    var severity: Int = 2
 
     var coordinate: CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
@@ -29,10 +31,18 @@ enum FeatureDetector {
     }
 
     // Tuning knobs (all meters/degrees; untested-on-real-roads guesses).
-    static let cornerRadiusThreshold: Double = 110
+    static let cornerRadiusThreshold: Double = 150
     static let cornerMinTurnDegrees: Double = 40
     static let maneuverExclusionRadius: Double = 45
     static let sampleSpacing: Double = 15
+
+    /// Rally chevron grade from curve radius: ‹35 m = 3 (hairpin),
+    /// ‹75 m = 2 (tight), otherwise 1 (mild).
+    static func severity(forRadius radius: Double) -> Int {
+        if radius < 35 { return 3 }
+        if radius < 75 { return 2 }
+        return 1
+    }
 
     // MARK: - Entry point
 
@@ -67,7 +77,8 @@ enum FeatureDetector {
                     coordinate: detected.coordinate,
                     bearing: detected.bearing,
                     note: detected.note,
-                    isSuggested: true
+                    isSuggested: true,
+                    severity: detected.severity
                 )
             )
             added[detected.type, default: 0] += 1
@@ -190,7 +201,8 @@ enum FeatureDetector {
                         latitude: apex.latitude,
                         longitude: apex.longitude,
                         bearing: nil,
-                        note: "Auto: ~\(Int(minRadius)) m radius"
+                        note: "Auto: ~\(Int(minRadius)) m radius",
+                        severity: severity(forRadius: minRadius)
                     )
                 )
                 lastCorner = apexLocation

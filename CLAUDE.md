@@ -137,6 +137,11 @@ number on upload, so repeat uploads need no project edits.
   (start/end), but v1 models every feature as a point. Revisit when it hurts.
 - **Alert tuning:** lookahead 600 m, 50° heading cone, re-announce after
   leaving 1.5× lookahead — all untested guesses; tune on real drives.
+- **Corner severity = rally chevrons** (RoadFeature.severity 1–3; only
+  meaningful for .tightCorner): ‹35 m radius = 3 (hairpin), ‹75 m = 2
+  (tight), ‹150 m = 1 (mild). Grade names: Corner / Tight corner /
+  Hairpin; hairpin callouts append "Slow down". Radius bands are guesses
+  pending real drives.
 - **Background location UX** and CarPlay entitlement are deferred.
 - **Route planner replans every leg on each waypoint tap** — fine for a
   handful of waypoints, but MKDirections throttles aggressive use; cache
