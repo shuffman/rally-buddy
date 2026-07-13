@@ -14,7 +14,17 @@ struct FeatureListTab: View {
                         Image(systemName: feature.type.systemImage)
                             .foregroundStyle(feature.type.tint)
                         VStack(alignment: .leading) {
-                            Text(feature.type.label)
+                            HStack(spacing: 6) {
+                                Text(feature.type.label)
+                                if feature.isSuggested {
+                                    Text("SUGGESTED")
+                                        .font(.caption2.bold())
+                                        .padding(.horizontal, 5)
+                                        .padding(.vertical, 1)
+                                        .background(.orange.opacity(0.2), in: Capsule())
+                                        .foregroundStyle(.orange)
+                                }
+                            }
                             if !feature.note.isEmpty {
                                 Text(feature.note)
                                     .font(.caption)
@@ -26,6 +36,16 @@ struct FeatureListTab: View {
                             Image(systemName: "arrow.up.circle")
                                 .foregroundStyle(.secondary)
                                 .accessibilityLabel("One direction only")
+                        }
+                    }
+                    .swipeActions(edge: .leading) {
+                        if feature.isSuggested {
+                            Button {
+                                feature.isSuggested = false
+                            } label: {
+                                Label("Confirm", systemImage: "checkmark")
+                            }
+                            .tint(.green)
                         }
                     }
                 }

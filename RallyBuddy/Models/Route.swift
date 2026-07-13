@@ -11,22 +11,28 @@ final class Route {
     /// Interleaved lat/lon pairs for the road-snapped path between them.
     var pathCoords: [Double]
     var distanceMeters: Double
+    /// Interleaved lat/lon pairs for turn locations (step boundaries) —
+    /// used to avoid flagging intersection turns as tight corners.
+    var maneuverCoords: [Double] = []
 
     init(
         name: String,
         waypoints: [CLLocationCoordinate2D],
         path: [CLLocationCoordinate2D],
-        distanceMeters: Double
+        distanceMeters: Double,
+        maneuvers: [CLLocationCoordinate2D] = []
     ) {
         self.name = name
         self.createdAt = .now
         self.waypointCoords = Self.pack(waypoints)
         self.pathCoords = Self.pack(path)
         self.distanceMeters = distanceMeters
+        self.maneuverCoords = Self.pack(maneuvers)
     }
 
     var waypoints: [CLLocationCoordinate2D] { Self.unpack(waypointCoords) }
     var path: [CLLocationCoordinate2D] { Self.unpack(pathCoords) }
+    var maneuvers: [CLLocationCoordinate2D] { Self.unpack(maneuverCoords) }
 
     var formattedDistance: String {
         String(format: "%.1f km", distanceMeters / 1000)

@@ -28,7 +28,8 @@ struct DriveView: View {
                 MapMarker(
                     id: "f-\(feature.createdAt.timeIntervalSince1970)",
                     coordinate: feature.coordinate,
-                    kind: .feature(feature.type)
+                    kind: .feature(feature.type),
+                    suggested: feature.isSuggested
                 )
             },
             pathCoordinates: activeRoute?.path ?? [],

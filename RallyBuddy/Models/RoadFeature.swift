@@ -72,12 +72,15 @@ final class RoadFeature {
     var bearing: Double?
     var note: String
     var createdAt: Date
+    /// True for auto-detected features awaiting the user's confirmation.
+    var isSuggested: Bool = false
 
     init(
         type: RoadFeatureType,
         coordinate: CLLocationCoordinate2D,
         bearing: Double? = nil,
-        note: String = ""
+        note: String = "",
+        isSuggested: Bool = false
     ) {
         self.type = type
         self.latitude = coordinate.latitude
@@ -85,6 +88,7 @@ final class RoadFeature {
         self.bearing = bearing
         self.note = note
         self.createdAt = .now
+        self.isSuggested = isSuggested
     }
 
     var coordinate: CLLocationCoordinate2D {

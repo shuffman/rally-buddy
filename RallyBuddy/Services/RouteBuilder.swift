@@ -8,15 +8,18 @@ enum RouteBuilder {
     struct PlannedPath {
         let coordinates: [CLLocationCoordinate2D]
         let distanceMeters: Double
+        /// Turn locations (route step boundaries + intermediate waypoints).
+        let maneuvers: [CLLocationCoordinate2D]
     }
 
     static func plan(through waypoints: [CLLocationCoordinate2D]) async throws -> PlannedPath {
         guard waypoints.count >= 2 else {
-            return PlannedPath(coordinates: [], distanceMeters: 0)
+            return PlannedPath(coordinates: [], distanceMeters: 0, maneuvers: [])
         }
 
         var coordinates: [CLLocationCoordinate2D] = []
         var distance: CLLocationDistance = 0
+        var maneuvers: [CLLocationCoordinate2D] = Array(waypoints.dropFirst().dropLast())
 
         for (start, end) in zip(waypoints, waypoints.dropFirst()) {
             let request = MKDirections.Request()
@@ -28,10 +31,15 @@ enum RouteBuilder {
             guard let leg = response.routes.first else { continue }
             coordinates.append(contentsOf: leg.polyline.coordinateArray)
             distance += leg.distance
+            for step in leg.steps.dropFirst() {
+                if let turn = step.polyline.coordinateArray.first {
+                    maneuvers.append(turn)
+                }
+            }
             try Task.checkCancellation()
         }
 
-        return PlannedPath(coordinates: coordinates, distanceMeters: distance)
+        return PlannedPath(coordinates: coordinates, distanceMeters: distance, maneuvers: maneuvers)
     }
 }
 

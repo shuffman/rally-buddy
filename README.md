@@ -32,6 +32,9 @@ Native SwiftUI iOS app. All data stays on your device.
 - **Explorer's Map skin** — optional old-timey parchment style: sepia ink
   roads, dotted treasure-trail route, compass rose, here-be-dragons corner
   markers
+- **Feature auto-detection** — scan a route to suggest tight corners
+  (pure geometry), residential zones and passing lanes (OpenStreetMap
+  tags); suggestions are confirmable, deletable, and deduped
 
 Planned: CarPlay, live peer-to-peer nearby sync, off-route detection.
 

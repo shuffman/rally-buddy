@@ -68,6 +68,26 @@ needed.
 Each feature is announced once per approach. Features you marked yourself
 during the drive are not announced back to you.
 
+## Auto-detecting features
+
+Rally Buddy can scan a route and suggest features so you don't have to
+mark everything by hand. In the **Routes** tab, long-press a route and
+choose **Detect Features**. The scan finds:
+
+- **Tight corners** — from the actual geometry of the route (works
+  offline). Each suggestion notes the approximate curve radius.
+- **Residential zones** — where the route enters residential areas mapped
+  in OpenStreetMap (needs internet during the scan).
+- **Passing lanes** — where OpenStreetMap tags an extra travel lane
+  (needs internet; best-effort — lane tagging varies a lot by region, so
+  expect missed ones and double-check what it finds).
+
+Detected features appear as **suggestions**: faded, dash-ringed markers on
+the map and a SUGGESTED badge in the Features tab. They alert during
+drives like normal features. Swipe right on one in the Features tab to
+**confirm** it (it becomes a regular feature), or swipe left to delete a
+bad guess. Scanning twice won't duplicate anything.
+
 ## Routes
 
 Routes let you plan a drive ahead of time and share it.

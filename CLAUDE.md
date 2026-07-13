@@ -98,6 +98,14 @@ MARKETING_VERSION in project.yml for user-visible versions.
 - `Services/RouteShare.swift` — `.rallybuddy` export (Transferable) + import.
 - `Services/OfflineMapManager.swift` — MapLibre offline packs (download /
   list / delete regions), bounding-box helpers.
+- `Services/FeatureDetector.swift` — route scanning: corners via
+  circumradius over the resampled path (offline; intersection turns are
+  excluded using the route's stored maneuver points), residential zones +
+  passing lanes via Overpass (needs a User-Agent header or overpass-api.de
+  406s; lane data filtered against turn:lanes/overtaking=no false
+  positives). Results insert as `RoadFeature(isSuggested: true)`; user
+  confirms via swipe in the Features tab. Detector math is standalone-
+  compilable — synthetic tests (hairpin/sweeper/intersection) pass.
 - `Views/MapLibreView.swift` — UIViewRepresentable over MLNMapView, shared
   by Drive and the planner: markers, route line (a style layer, so it can
   be dashed), course-follow camera, tap-to-coordinate, theme switching.

@@ -10,6 +10,7 @@ struct RoutePlannerView: View {
 
     @State private var waypoints: [CLLocationCoordinate2D] = []
     @State private var plannedPath: [CLLocationCoordinate2D] = []
+    @State private var plannedManeuvers: [CLLocationCoordinate2D] = []
     @State private var distanceMeters: Double = 0
     @State private var isPlanning = false
     @State private var planningError: String?
@@ -112,6 +113,7 @@ struct RoutePlannerView: View {
                 let planned = try await RouteBuilder.plan(through: snapshot)
                 guard !Task.isCancelled else { return }
                 plannedPath = planned.coordinates
+                plannedManeuvers = planned.maneuvers
                 distanceMeters = planned.distanceMeters
             } catch is CancellationError {
                 return
@@ -131,7 +133,8 @@ struct RoutePlannerView: View {
                 : name,
             waypoints: waypoints,
             path: plannedPath,
-            distanceMeters: distanceMeters
+            distanceMeters: distanceMeters,
+            maneuvers: plannedManeuvers
         )
         modelContext.insert(route)
         dismiss()

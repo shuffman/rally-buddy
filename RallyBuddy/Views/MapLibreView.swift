@@ -15,12 +15,15 @@ struct MapMarker: Equatable {
     let latitude: Double
     let longitude: Double
     let kind: Kind
+    /// Auto-detected, not yet confirmed by the user — drawn dashed/faded.
+    let suggested: Bool
 
-    init(id: String, coordinate: CLLocationCoordinate2D, kind: Kind) {
+    init(id: String, coordinate: CLLocationCoordinate2D, kind: Kind, suggested: Bool = false) {
         self.id = id
         self.latitude = coordinate.latitude
         self.longitude = coordinate.longitude
         self.kind = kind
+        self.suggested = suggested
     }
 
     var coordinate: CLLocationCoordinate2D {
@@ -85,18 +88,20 @@ struct MapLibreView: UIViewRepresentable {
             coordinator.markerAnnotations = markers.map { marker in
                 let annotation = MarkerAnnotation()
                 annotation.coordinate = marker.coordinate
+                let suffix = marker.suggested ? "-suggested" : ""
                 switch marker.kind {
                 case .feature(let type):
-                    annotation.reuseKey = "\(theme.rawValue)-feature-\(type.rawValue)"
+                    annotation.reuseKey = "\(theme.rawValue)-feature-\(type.rawValue)\(suffix)"
                     annotation.tint = UIColor(type.tint)
                     annotation.symbolName = theme == .explorer
                         ? type.explorerSymbol : type.systemImage
                 case .waypoint(let number):
-                    annotation.reuseKey = "\(theme.rawValue)-waypoint-\(number)"
+                    annotation.reuseKey = "\(theme.rawValue)-waypoint-\(number)\(suffix)"
                     annotation.tint = .systemBlue
                     annotation.textLabel = "\(number)"
                 }
                 annotation.isExplorer = theme == .explorer
+                annotation.isSuggestedMarker = marker.suggested
                 return annotation
             }
             mapView.addAnnotations(coordinator.markerAnnotations)
@@ -228,7 +233,8 @@ struct MapLibreView: UIViewRepresentable {
                     symbolName: marker.symbolName,
                     textLabel: marker.textLabel,
                     tint: marker.tint,
-                    explorer: marker.isExplorer
+                    explorer: marker.isExplorer,
+                    suggested: marker.isSuggestedMarker
                 ),
                 reuseIdentifier: marker.reuseKey
             )
@@ -242,14 +248,16 @@ struct MapLibreView: UIViewRepresentable {
             symbolName: String?,
             textLabel: String?,
             tint: UIColor,
-            explorer: Bool
+            explorer: Bool,
+            suggested: Bool = false
         ) -> UIImage {
             let size = CGSize(width: 38, height: 38)
             let parchment = UIColor(red: 0.95, green: 0.91, blue: 0.80, alpha: 1)
             let ink = UIColor(red: 0.31, green: 0.23, blue: 0.13, alpha: 1)
-            let fill = explorer ? parchment : tint
-            let stroke = explorer ? ink : UIColor.white
-            let content = explorer ? ink : UIColor.white
+            let alpha: CGFloat = suggested ? 0.65 : 1
+            let fill = (explorer ? parchment : tint).withAlphaComponent(alpha)
+            let stroke = (explorer ? ink : UIColor.white).withAlphaComponent(alpha)
+            let content = (explorer ? ink : UIColor.white).withAlphaComponent(alpha)
 
             return UIGraphicsImageRenderer(size: size).image { _ in
                 let circle = CGRect(origin: .zero, size: size).insetBy(dx: 2, dy: 2)
@@ -257,6 +265,9 @@ struct MapLibreView: UIViewRepresentable {
                 stroke.setStroke()
                 let path = UIBezierPath(ovalIn: circle)
                 path.lineWidth = explorer ? 2.5 : 3
+                if suggested {
+                    path.setLineDash([4, 3], count: 2, phase: 0)
+                }
                 path.fill()
                 path.stroke()
 
@@ -299,4 +310,5 @@ final class MarkerAnnotation: MLNPointAnnotation {
     var symbolName: String?
     var textLabel: String?
     var isExplorer = false
+    var isSuggestedMarker = false
 }

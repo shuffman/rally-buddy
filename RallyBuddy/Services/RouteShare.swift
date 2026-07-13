@@ -25,6 +25,8 @@ struct SharedRoute: Codable {
     var path: [Double]
     var distanceMeters: Double
     var features: [Feature]
+    /// Added in v2 of the format; optional for backward compatibility.
+    var maneuvers: [Double]? = nil
 }
 
 /// Snapshot of a route + all candidate features, filtered down to the ones
@@ -34,6 +36,7 @@ struct RouteExport: Transferable {
     var waypoints: [Double]
     var path: [Double]
     var distanceMeters: Double
+    var maneuvers: [Double]
     var candidateFeatures: [SharedRoute.Feature]
 
     /// Features within this many meters of the path are included.
@@ -44,6 +47,7 @@ struct RouteExport: Transferable {
         self.waypoints = route.waypointCoords
         self.path = route.pathCoords
         self.distanceMeters = route.distanceMeters
+        self.maneuvers = route.maneuverCoords
         self.candidateFeatures = features.map {
             SharedRoute.Feature(
                 type: $0.type.rawValue,
@@ -97,7 +101,8 @@ struct RouteExport: Transferable {
             waypoints: waypoints,
             path: path,
             distanceMeters: distanceMeters,
-            features: nearby
+            features: nearby,
+            maneuvers: maneuvers
         )
     }
 }
@@ -123,7 +128,8 @@ enum RouteShareImporter {
             name: shared.name,
             waypoints: Route.unpack(shared.waypoints),
             path: Route.unpack(shared.path),
-            distanceMeters: shared.distanceMeters
+            distanceMeters: shared.distanceMeters,
+            maneuvers: Route.unpack(shared.maneuvers ?? [])
         )
         context.insert(route)
 
