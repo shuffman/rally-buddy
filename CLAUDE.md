@@ -45,6 +45,35 @@ xcodebuild -project RallyBuddy.xcodeproj -scheme RallyBuddy \
   -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 ```
 
+## TestFlight release
+
+ASC credentials live in `~/.keys.yaml` (`app_store_connect:` — API key
+4C8LJ62B46, team VC353TUHG2). Rally Buddy: ASC app id 6790257858, bundle
+`com.shuffman.rallybuddy` (bundle-id resource T4NFL4ZKT9). Signing is
+**manual**: "Apple Distribution: Sam Huffman" cert (ASC id A482WMGG2X, in
+login keychain) + "Rally Buddy App Store" profile — the ASC API key lacks
+cloud-signing permission, which is why automatic distribution signing fails
+with "Cloud signing permission error". Internal TestFlight group "Internal"
+has access to all builds.
+
+```sh
+xcodebuild archive -project RallyBuddy.xcodeproj -scheme RallyBuddy \
+  -destination 'generic/platform=iOS' -archivePath build/RallyBuddy.xcarchive \
+  -allowProvisioningUpdates \
+  -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_4C8LJ62B46.p8 \
+  -authenticationKeyID 4C8LJ62B46 \
+  -authenticationKeyIssuerID 467cad01-fed5-45da-9b77-2826c8a2c588
+xcodebuild -exportArchive -archivePath build/RallyBuddy.xcarchive \
+  -exportOptionsPlist ExportOptions.plist \
+  -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_4C8LJ62B46.p8 \
+  -authenticationKeyID 4C8LJ62B46 \
+  -authenticationKeyIssuerID 467cad01-fed5-45da-9b77-2826c8a2c588
+```
+
+`manageAppVersionAndBuildNumber` in ExportOptions.plist auto-bumps the build
+number on upload, so repeat uploads need no project edits; bump
+MARKETING_VERSION in project.yml for user-visible versions.
+
 ## Architecture
 
 - `Models/RoadFeature.swift` — SwiftData model. A feature is a point with a

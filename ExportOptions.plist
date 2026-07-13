@@ -8,6 +8,15 @@
 	<string>upload</string>
 	<key>teamID</key>
 	<string>VC353TUHG2</string>
+	<key>signingStyle</key>
+	<string>manual</string>
+	<key>signingCertificate</key>
+	<string>Apple Distribution</string>
+	<key>provisioningProfiles</key>
+	<dict>
+		<key>com.shuffman.rallybuddy</key>
+		<string>Rally Buddy App Store</string>
+	</dict>
 	<key>manageAppVersionAndBuildNumber</key>
 	<true/>
 </dict>
