@@ -54,7 +54,10 @@ ASC credentials live in `~/.keys.yaml` (`app_store_connect:` — API key
 login keychain) + "Rally Buddy App Store" profile — the ASC API key lacks
 cloud-signing permission, which is why automatic distribution signing fails
 with "Cloud signing permission error". Internal TestFlight group "Internal"
-has access to all builds.
+has access to all builds. External group "Friends" has a public link —
+https://testflight.apple.com/join/Yfgj5x49 — new builds must be attached to
+the group (only the first build of a version needs beta review). Beta review
+contact details are already configured in App Store Connect.
 
 ```sh
 xcodebuild archive -project RallyBuddy.xcodeproj -scheme RallyBuddy \
