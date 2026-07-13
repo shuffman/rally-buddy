@@ -30,7 +30,7 @@ final class AlertEngine {
     private(set) var upcoming: [UpcomingFeature] = []
 
     private var announced: Set<PersistentIdentifier> = []
-    private let speech: SpeechService
+    let speech: SpeechService
 
     init(speech: SpeechService) {
         self.speech = speech
@@ -81,6 +81,12 @@ final class AlertEngine {
             announced.insert(item.id)
             speech.say(item.announcement)
         }
+    }
+
+    /// Prevents a feature from being announced on the current approach,
+    /// e.g. one the driver just marked themselves.
+    func suppress(_ feature: RoadFeature) {
+        announced.insert(feature.id)
     }
 
     func reset() {

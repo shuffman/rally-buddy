@@ -18,6 +18,15 @@ enum RoadFeatureType: String, Codable, CaseIterable, Identifiable {
         }
     }
 
+    /// Short label for the one-tap quick-mark buttons on the drive screen.
+    var shortLabel: String {
+        switch self {
+        case .passingLane: "Pass"
+        case .residentialZone: "Homes"
+        case .tightCorner: "Corner"
+        }
+    }
+
     /// How the feature is named in spoken callouts.
     var spokenName: String {
         switch self {

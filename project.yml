@@ -29,3 +29,20 @@ targets:
         UIBackgroundModes:
           - audio
           - location
+        LSSupportsOpeningDocumentsInPlace: false
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Rally Buddy Route
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Owner
+            LSItemContentTypes:
+              - com.shuffman.rallybuddy.route
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.shuffman.rallybuddy.route
+            UTTypeDescription: Rally Buddy Route
+            UTTypeConformsTo:
+              - public.json
+            UTTypeTagSpecification:
+              public.filename-extension:
+                - rallybuddy
+              public.mime-type:
+                - application/json

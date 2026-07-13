@@ -19,5 +19,14 @@ Freeway Drive in the simulator).
 
 ## Status
 
-Early scaffold: map annotation, feature list, drive HUD with spoken callouts.
-CarPlay and routing are planned. See `CLAUDE.md` for decisions and roadmap.
+Working early build:
+
+- Driver-centric main screen: full-screen map, one-tap quick-mark buttons
+  while driving, speed pill, callout banner, spoken alerts.
+- Plan routes ahead of time by tapping waypoints (snapped to roads via
+  MKDirections), then select one before a drive.
+- Share a route + its datapoints as a `.rallybuddy` file over AirDrop;
+  opening one imports it.
+
+CarPlay and live peer-to-peer nearby sync are planned. See `CLAUDE.md` for
+decisions and roadmap.

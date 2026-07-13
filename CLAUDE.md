@@ -16,6 +16,23 @@ out what's ahead — spoken audio plus a glanceable heads-up view.
 - **Delivery:** audio callouts + visual heads-up view now; CarPlay later
   (note: CarPlay requires a driving-task/navigation entitlement approved by
   Apple — apply well before that milestone).
+- **Routes are planned, not recorded** (agreed 2026-07-12): the user taps
+  waypoints on a map and MKDirections snaps the path to public roads.
+  "Replaying" a route = selecting it before a drive; it draws on the map and
+  the normal feature callouts apply.
+- **Sharing: AirDrop file first, peer-to-peer later.** Routes export as
+  `.rallybuddy` JSON (route + features within 200 m of the path) via
+  ShareLink; the app claims the UTI `com.shuffman.rallybuddy.route` so
+  receiving via AirDrop opens and imports it (features deduped within 25 m).
+  True tap-to-share (NameDrop) is not available to third-party apps;
+  MultipeerConnectivity "live nearby sync" is the planned follow-up.
+- **Driver-centric main screen:** map is front and center; while driving,
+  marking a feature is ONE tap on a big bottom-row button (drops it at the
+  current location + course, haptic + spoken confirmation, no announcement
+  for self-marked features). Map-tap annotation is only available when not
+  driving. Tab bar hides during a drive.
+- **MapKit** (agreed 2026-07-12): easiest that's pretty good — no API keys,
+  no SDK dependency, free MKDirections routing.
 
 ## Build
 
@@ -32,13 +49,18 @@ xcodebuild -project RallyBuddy.xcodeproj -scheme RallyBuddy \
 
 - `Models/RoadFeature.swift` — SwiftData model. A feature is a point with a
   type, optional travel-direction bearing (nil = both directions), and note.
+- `Models/Route.swift` — SwiftData model; waypoints + road-snapped path
+  stored as interleaved lat/lon `[Double]` arrays.
 - `Services/LocationService.swift` — CLLocationManager wrapper (@Observable);
   best-for-navigation accuracy, background updates while a drive is active.
 - `Services/AlertEngine.swift` — pure-ish logic: given a location + features,
   computes what's ahead (distance + heading cone) and announces each feature
   once per approach via SpeechService.
 - `Services/SpeechService.swift` — AVSpeechSynthesizer with audio ducking.
-- `Views/` — three tabs: Drive (HUD), Map (tap to mark features), Features
+- `Services/RouteBuilder.swift` — MKDirections leg-by-leg planning.
+- `Services/RouteShare.swift` — `.rallybuddy` export (Transferable) + import.
+- `Views/` — three tabs: Drive (full-screen map HUD, quick-mark buttons,
+  route picker), Routes (list/share/plan via RoutePlannerView), Features
   (list/delete).
 
 ## Open questions / recorded assumptions
@@ -50,3 +72,8 @@ xcodebuild -project RallyBuddy.xcodeproj -scheme RallyBuddy \
 - **Alert tuning:** lookahead 600 m, 50° heading cone, re-announce after
   leaving 1.5× lookahead — all untested guesses; tune on real drives.
 - **Background location UX** and CarPlay entitlement are deferred.
+- **Route planner replans every leg on each waypoint tap** — fine for a
+  handful of waypoints, but MKDirections throttles aggressive use; cache
+  per-leg results if this becomes a problem.
+- **Off-route detection** while driving a route: not implemented; the route
+  is currently just drawn on the map.

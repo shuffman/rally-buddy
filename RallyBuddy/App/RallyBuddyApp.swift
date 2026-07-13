@@ -7,6 +7,6 @@ struct RallyBuddyApp: App {
         WindowGroup {
             ContentView()
         }
-        .modelContainer(for: RoadFeature.self)
+        .modelContainer(for: [RoadFeature.self, Route.self])
     }
 }
