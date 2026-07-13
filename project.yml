@@ -1,0 +1,31 @@
+name: RallyBuddy
+options:
+  bundleIdPrefix: com.shuffman
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+targets:
+  RallyBuddy:
+    type: application
+    platform: iOS
+    sources:
+      - RallyBuddy
+    scheme:
+      testTargets: []
+    settings:
+      base:
+        TARGETED_DEVICE_FAMILY: "1"
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: minimal
+    info:
+      path: RallyBuddy/Info.plist
+      properties:
+        UILaunchScreen: {}
+        ITSAppUsesNonExemptEncryption: false
+        NSLocationWhenInUseUsageDescription: >-
+          Rally Buddy uses your location while you drive to warn you about
+          upcoming road features you have marked, such as passing lanes,
+          residential zones, and tight corners.
+        UIBackgroundModes:
+          - audio
+          - location

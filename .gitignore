@@ -1,0 +1,11 @@
+# XcodeGen output — regenerate with `xcodegen generate`
+*.xcodeproj
+RallyBuddy/Info.plist
+
+# Xcode
+xcuserdata/
+DerivedData/
+*.xcresult
+
+# macOS
+.DS_Store
