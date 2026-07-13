@@ -1,5 +1,6 @@
 import CoreLocation
 import Foundation
+import SwiftData
 
 /// A feature found by scanning a route, before it becomes a RoadFeature.
 struct DetectedFeature {
@@ -34,6 +35,54 @@ enum FeatureDetector {
     static let sampleSpacing: Double = 15
 
     // MARK: - Entry point
+
+    /// Scans a route and inserts new findings as suggested features,
+    /// skipping anything within 60 m of an existing feature of the same
+    /// type. Returns a human-readable summary.
+    @MainActor
+    static func scanAndInsert(
+        path: [CLLocationCoordinate2D],
+        maneuvers: [CLLocationCoordinate2D],
+        existingFeatures: [RoadFeature],
+        context: ModelContext
+    ) async -> String {
+        let result = await scan(path: path, maneuvers: maneuvers)
+        var added: [RoadFeatureType: Int] = [:]
+        for detected in result.features {
+            let location = CLLocation(
+                latitude: detected.latitude,
+                longitude: detected.longitude
+            )
+            let isDuplicate = existingFeatures.contains { existing in
+                existing.type == detected.type
+                    && CLLocation(
+                        latitude: existing.latitude,
+                        longitude: existing.longitude
+                    ).distance(from: location) < 60
+            }
+            guard !isDuplicate else { continue }
+            context.insert(
+                RoadFeature(
+                    type: detected.type,
+                    coordinate: detected.coordinate,
+                    bearing: detected.bearing,
+                    note: detected.note,
+                    isSuggested: true
+                )
+            )
+            added[detected.type, default: 0] += 1
+        }
+        var lines = RoadFeatureType.allCases.compactMap { type -> String? in
+            guard let count = added[type], count > 0 else { return nil }
+            return "\(count) \(type.label.lowercased())\(count == 1 ? "" : "s")"
+        }
+        if lines.isEmpty { lines = ["Nothing new found"] }
+        var message = "Added as suggestions: " + lines.joined(separator: ", ")
+        if !result.osmReachable {
+            message += "\n\nOpenStreetMap was unreachable — only corners were detected."
+        }
+        return message
+    }
 
     static func scan(
         path: [CLLocationCoordinate2D],

@@ -70,9 +70,11 @@ during the drive are not announced back to you.
 
 ## Auto-detecting features
 
-Rally Buddy can scan a route and suggest features so you don't have to
-mark everything by hand. In the **Routes** tab, long-press a route and
-choose **Detect Features**. The scan finds:
+Rally Buddy scans every route **automatically when you save it** and adds
+what it finds as suggestions. You can re-scan any route later — swipe
+right on it in the **Routes** tab (or long-press → **Detect Features**),
+useful after the map data improves or for routes shared to you. The scan
+finds:
 
 - **Tight corners** — from the actual geometry of the route (works
   offline). Each suggestion notes the approximate curve radius.

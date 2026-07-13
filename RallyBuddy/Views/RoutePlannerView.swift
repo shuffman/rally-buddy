@@ -7,6 +7,7 @@ import SwiftUI
 struct RoutePlannerView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Query private var existingFeatures: [RoadFeature]
 
     @State private var waypoints: [CLLocationCoordinate2D] = []
     @State private var plannedPath: [CLLocationCoordinate2D] = []
@@ -137,6 +138,22 @@ struct RoutePlannerView: View {
             maneuvers: plannedManeuvers
         )
         modelContext.insert(route)
+
+        // Auto-detect features on the new route; suggestions appear on the
+        // map as dashed markers. Runs on after dismissal — the detached
+        // task outlives this view.
+        let path = plannedPath
+        let maneuvers = plannedManeuvers
+        let existing = existingFeatures
+        let context = modelContext
+        Task { @MainActor in
+            _ = await FeatureDetector.scanAndInsert(
+                path: path,
+                maneuvers: maneuvers,
+                existingFeatures: existing,
+                context: context
+            )
+        }
         dismiss()
     }
 }
