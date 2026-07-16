@@ -9,6 +9,9 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     private(set) var authorization: CLAuthorizationStatus = .notDetermined
     private(set) var isTracking = false
 
+    /// Called on every location fix, independent of any UI being visible.
+    @ObservationIgnored var onLocationUpdate: ((CLLocation) -> Void)?
+
     override init() {
         super.init()
         manager.delegate = self
@@ -44,6 +47,9 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         location = locations.last
+        if let last = locations.last {
+            onLocationUpdate?(last)
+        }
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {

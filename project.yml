@@ -18,6 +18,10 @@ targets:
       - package: MapLibre
     scheme:
       testTargets: []
+    entitlements:
+      path: RallyBuddy/RallyBuddy.entitlements
+      properties:
+        com.apple.developer.carplay-driving-task: true
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "1"
@@ -41,6 +45,12 @@ targets:
         UIBackgroundModes:
           - audio
           - location
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
+          UISceneConfigurations:
+            CPTemplateApplicationSceneSessionRoleApplication:
+              - UISceneConfigurationName: CarPlay
+                UISceneDelegateClassName: RallyBuddy.CarPlaySceneDelegate
         LSSupportsOpeningDocumentsInPlace: false
         CFBundleDocumentTypes:
           - CFBundleTypeName: Rally Buddy Route

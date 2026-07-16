@@ -2,8 +2,8 @@ import SwiftData
 import SwiftUI
 
 struct ContentView: View {
-    @State private var locationService = LocationService()
-    @State private var alertEngine = AlertEngine(speech: SpeechService())
+    private let locationService = AppServices.shared.locationService
+    private let alertEngine = AppServices.shared.alertEngine
     @State private var offlineManager = OfflineMapManager()
     @State private var activeRoute: Route?
     @State private var importErrorMessage: String?

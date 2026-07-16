@@ -58,10 +58,6 @@ struct DriveView: View {
             }
         }
         .onAppear { locationService.requestPermission() }
-        .onChange(of: locationService.location) { _, newLocation in
-            guard let newLocation, locationService.isTracking else { return }
-            alertEngine.update(location: newLocation, features: features)
-        }
         .sheet(item: $pendingPoint) { point in
             AddFeatureSheet(coordinate: point.coordinate, course: nil)
                 .presentationDetents([.medium])
@@ -104,7 +100,9 @@ struct DriveView: View {
                 .tint(.red)
             } else {
                 HStack(spacing: 12) {
-                    routeMenu
+                    if !routes.isEmpty {
+                        routeMenu
+                    }
                     Spacer()
                     Menu {
                         Picker("Map style", selection: $mapThemeRaw) {
@@ -182,20 +180,19 @@ struct DriveView: View {
             bearing: location.course >= 0 ? location.course : nil,
             severity: severity
         )
-        modelContext.insert(feature)
-        // Don't call out the feature the driver just marked themselves.
-        alertEngine.suppress(feature)
+        // Inserts and suppresses via the shared services so the CarPlay
+        // scene and the live alert snapshot stay in sync.
+        AppServices.shared.addFeature(feature)
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         alertEngine.speech.say("Marked \(feature.spokenName.lowercased())")
     }
 
     private func startDrive() {
-        locationService.startTracking()
+        AppServices.shared.startDrive()
     }
 
     private func endDrive() {
-        locationService.stopTracking()
-        alertEngine.reset()
+        AppServices.shared.endDrive()
     }
 }
 
