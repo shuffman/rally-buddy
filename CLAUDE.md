@@ -13,9 +13,16 @@ out what's ahead — spoken audio plus a glanceable heads-up view.
   no derivation from OSM or other map data.
 - **Companion mode first.** No destination entry or routing in v1; the app
   watches the road you're on. Design should not preclude adding routing later.
-- **Delivery:** audio callouts + visual heads-up view now; CarPlay later
-  (note: CarPlay requires a driving-task/navigation entitlement approved by
-  Apple — apply well before that milestone).
+- **Delivery:** audio callouts + visual heads-up view + CarPlay.
+  CarPlay (granted 2026-07-15, **driving-task** entitlement): template
+  card via `CarPlaySceneDelegate` — next feature + distance + speed +
+  drive toggle. No custom map on the car screen unless we later get the
+  navigation entitlement (requires real turn-by-turn routing).
+  `AppServices` (singleton) owns location→alert wiring so both UIs share
+  one engine. The entitlement is a "managed capability": it must be
+  ticked on the App ID under Additional Capabilities (portal UI only,
+  not API), and doing so invalidates provisioning profiles — recreate
+  the App Store profile via the ASC API afterwards.
 - **Routes are planned, not recorded** (agreed 2026-07-12): the user taps
   waypoints on a map and MKDirections snaps the path to public roads.
   "Replaying" a route = selecting it before a drive; it draws on the map and

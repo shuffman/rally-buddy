@@ -128,6 +128,18 @@ or the attachment) and choose Rally Buddy. The route and its features are
 imported. Features nearly identical to ones you already have are skipped,
 so importing twice won't create duplicates.
 
+## CarPlay
+
+Plug in (or connect wirelessly) and Rally Buddy appears on your car's
+screen as a glanceable card: the next feature ahead with its chevron
+grade and a live countdown distance, your speed, and a **Start Drive /
+End Drive** button — so you can run drives without touching the phone.
+Spoken callouts come through the car speakers.
+
+The car screen is deliberately simple (Apple's driving-task rules only
+allow simple cards, not maps). For the full map, glance at the phone in
+its mount; for everything else, the card is all you need.
+
 ## Map styles
 
 Two looks, switchable any time with the scroll/map button at the bottom of
