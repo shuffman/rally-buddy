@@ -173,18 +173,10 @@ struct DriveView: View {
     // MARK: - Actions
 
     private func quickMark(_ type: RoadFeatureType, severity: Int = 2) {
-        guard let location = locationService.location else { return }
-        let feature = RoadFeature(
-            type: type,
-            coordinate: location.coordinate,
-            bearing: location.course >= 0 ? location.course : nil,
-            severity: severity
-        )
-        // Inserts and suppresses via the shared services so the CarPlay
-        // scene and the live alert snapshot stay in sync.
-        AppServices.shared.addFeature(feature)
+        guard AppServices.shared.quickMark(type: type, severity: severity) != nil else {
+            return
+        }
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        alertEngine.speech.say("Marked \(feature.spokenName.lowercased())")
     }
 
     private func startDrive() {

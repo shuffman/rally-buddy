@@ -46,6 +46,22 @@ final class AppServices {
         isDriving ? endDrive() : startDrive()
     }
 
+    /// One-tap marking at the current location (drive screen buttons and
+    /// the CarPlay Mark tab). Confirms out loud; no-op without a GPS fix.
+    @discardableResult
+    func quickMark(type: RoadFeatureType, severity: Int = 2) -> RoadFeature? {
+        guard let location = locationService.location else { return nil }
+        let feature = RoadFeature(
+            type: type,
+            coordinate: location.coordinate,
+            bearing: location.course >= 0 ? location.course : nil,
+            severity: severity
+        )
+        addFeature(feature)
+        speech.say("Marked \(feature.spokenName.lowercased())")
+        return feature
+    }
+
     /// Insert a quick-marked feature and keep the live alert snapshot
     /// current so it isn't announced back to the driver.
     func addFeature(_ feature: RoadFeature) {

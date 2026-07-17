@@ -131,14 +131,19 @@ so importing twice won't create duplicates.
 ## CarPlay
 
 Plug in (or connect wirelessly) and Rally Buddy appears on your car's
-screen as a glanceable card: the next feature ahead with its chevron
-grade and a live countdown distance, your speed, and a **Start Drive /
-End Drive** button — so you can run drives without touching the phone.
-Spoken callouts come through the car speakers.
+screen with two tabs:
 
-The car screen is deliberately simple (Apple's driving-task rules only
-allow simple cards, not maps). For the full map, glance at the phone in
-its mount; for everything else, the card is all you need.
+- **Ahead** — the next few features coming up, each with its chevron
+  grade and a live countdown distance, plus your speed and a **Start
+  Drive / End Drive** button. Run whole drives without touching the
+  phone.
+- **Mark** — five big buttons (› ›› ››› corners, passing lane,
+  residential) that drop a feature at your current spot, confirmed out
+  loud. Marking from the car screen, eyes mostly on the road.
+
+Spoken callouts come through the car speakers. Apple's rules for this
+app category allow cards and buttons but not maps on the car screen —
+for the map, glance at the phone in its mount.
 
 ## Map styles
 

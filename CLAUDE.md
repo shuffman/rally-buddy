@@ -14,10 +14,13 @@ out what's ahead — spoken audio plus a glanceable heads-up view.
 - **Companion mode first.** No destination entry or routing in v1; the app
   watches the road you're on. Design should not preclude adding routing later.
 - **Delivery:** audio callouts + visual heads-up view + CarPlay.
-  CarPlay (granted 2026-07-15, **driving-task** entitlement): template
-  card via `CarPlaySceneDelegate` — next feature + distance + speed +
-  drive toggle. No custom map on the car screen unless we later get the
-  navigation entitlement (requires real turn-by-turn routing).
+  CarPlay (granted 2026-07-15, **driving-task** entitlement): tab bar via
+  `CarPlaySceneDelegate` — "Ahead" (top 3 upcoming + speed + drive
+  toggle) and "Mark" (grid of 5 one-tap quick-mark buttons). No custom
+  map on the car screen unless we later get the navigation entitlement —
+  which requires building real turn-by-turn route guidance first (we
+  already store MKDirections step locations per route; the planned
+  stepping stone).
   `AppServices` (singleton) owns location→alert wiring so both UIs share
   one engine. The entitlement is a "managed capability": it must be
   ticked on the App ID under Additional Capabilities (portal UI only,
