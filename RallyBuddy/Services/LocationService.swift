@@ -20,6 +20,10 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     }
 
     func requestPermission() {
+        // The screenshot/demo harness (--demo-nav) uses simulated location,
+        // which the simulator delivers without authorization; skip the
+        // prompt so it doesn't block captures.
+        guard !ProcessInfo.processInfo.arguments.contains("--demo-nav") else { return }
         if authorization == .notDetermined {
             manager.requestWhenInUseAuthorization()
         }

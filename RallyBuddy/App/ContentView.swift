@@ -49,6 +49,7 @@ struct ContentView: View {
                 showingImportError = true
             }
         }
+        .task { await DemoSeeder.runIfRequested() }
         .alert("Couldn't import route", isPresented: $showingImportError) {
             Button("OK", role: .cancel) {}
         } message: {
