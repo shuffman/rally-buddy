@@ -5,21 +5,31 @@ import MapKit
 /// Turns a sequence of tapped waypoints into a road-snapped path using
 /// MKDirections, one leg per waypoint pair.
 enum RouteBuilder {
+    struct GuidanceStep {
+        let coordinate: CLLocationCoordinate2D
+        let instruction: String
+    }
+
     struct PlannedPath {
         let coordinates: [CLLocationCoordinate2D]
         let distanceMeters: Double
         /// Turn locations (route step boundaries + intermediate waypoints).
         let maneuvers: [CLLocationCoordinate2D]
+        /// Spoken/visual turn-by-turn instructions, ordered along the route.
+        let guidanceSteps: [GuidanceStep]
     }
 
     static func plan(through waypoints: [CLLocationCoordinate2D]) async throws -> PlannedPath {
         guard waypoints.count >= 2 else {
-            return PlannedPath(coordinates: [], distanceMeters: 0, maneuvers: [])
+            return PlannedPath(
+                coordinates: [], distanceMeters: 0, maneuvers: [], guidanceSteps: []
+            )
         }
 
         var coordinates: [CLLocationCoordinate2D] = []
         var distance: CLLocationDistance = 0
         var maneuvers: [CLLocationCoordinate2D] = Array(waypoints.dropFirst().dropLast())
+        var guidanceSteps: [GuidanceStep] = []
 
         for (start, end) in zip(waypoints, waypoints.dropFirst()) {
             let request = MKDirections.Request()
@@ -31,6 +41,14 @@ enum RouteBuilder {
             guard let leg = response.routes.first else { continue }
             coordinates.append(contentsOf: leg.polyline.coordinateArray)
             distance += leg.distance
+            for step in leg.steps {
+                guard !step.instructions.isEmpty,
+                    let turn = step.polyline.coordinateArray.first
+                else { continue }
+                guidanceSteps.append(
+                    GuidanceStep(coordinate: turn, instruction: step.instructions)
+                )
+            }
             for step in leg.steps.dropFirst() {
                 if let turn = step.polyline.coordinateArray.first {
                     maneuvers.append(turn)
@@ -39,7 +57,12 @@ enum RouteBuilder {
             try Task.checkCancellation()
         }
 
-        return PlannedPath(coordinates: coordinates, distanceMeters: distance, maneuvers: maneuvers)
+        return PlannedPath(
+            coordinates: coordinates,
+            distanceMeters: distance,
+            maneuvers: maneuvers,
+            guidanceSteps: guidanceSteps
+        )
     }
 }
 

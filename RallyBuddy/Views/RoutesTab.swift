@@ -3,7 +3,8 @@ import SwiftData
 import SwiftUI
 
 struct RoutesTab: View {
-    @Binding var activeRoute: Route?
+    private var services = AppServices.shared
+    private var activeRoute: Route? { services.activeRoute }
 
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Route.createdAt, order: .reverse) private var routes: [Route]
@@ -18,7 +19,7 @@ struct RoutesTab: View {
                 ForEach(routes) { route in
                     HStack {
                         Button {
-                            activeRoute = route == activeRoute ? nil : route
+                            services.activeRoute = route == activeRoute ? nil : route
                         } label: {
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
@@ -122,7 +123,7 @@ struct RoutesTab: View {
     private func delete(at offsets: IndexSet) {
         for index in offsets {
             if routes[index] == activeRoute {
-                activeRoute = nil
+                services.activeRoute = nil
             }
             modelContext.delete(routes[index])
         }

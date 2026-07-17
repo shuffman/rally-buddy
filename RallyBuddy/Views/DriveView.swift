@@ -8,7 +8,13 @@ import UIKit
 struct DriveView: View {
     var locationService: LocationService
     var alertEngine: AlertEngine
-    @Binding var activeRoute: Route?
+    private var services = AppServices.shared
+    private var activeRoute: Route? { services.activeRoute }
+
+    init(locationService: LocationService, alertEngine: AlertEngine) {
+        self.locationService = locationService
+        self.alertEngine = alertEngine
+    }
 
     @Environment(\.modelContext) private var modelContext
     @Query private var features: [RoadFeature]
@@ -53,8 +59,25 @@ struct DriveView: View {
         }
         .safeAreaInset(edge: .bottom) { controls }
         .overlay(alignment: .top) {
-            if let next = alertEngine.upcoming.first {
-                CalloutBanner(item: next, serif: mapTheme == .explorer)
+            VStack(spacing: 8) {
+                if services.navigationEngine.isRerouting {
+                    Label("Rerouting…", systemImage: "arrow.triangle.2.circlepath")
+                        .font(.headline)
+                        .padding(10)
+                        .background(.regularMaterial, in: Capsule())
+                } else if services.navigationEngine.isNavigating,
+                    let instruction = services.navigationEngine.nextInstruction
+                {
+                    GuidanceBanner(
+                        instruction: instruction,
+                        maneuverDistance: services.navigationEngine.nextManeuverDistance,
+                        remainingDistance: services.navigationEngine.remainingDistance,
+                        serif: mapTheme == .explorer
+                    )
+                }
+                if let next = alertEngine.upcoming.first {
+                    CalloutBanner(item: next, serif: mapTheme == .explorer)
+                }
             }
         }
         .onAppear { locationService.requestPermission() }
@@ -145,7 +168,7 @@ struct DriveView: View {
         Menu {
             ForEach(routes) { route in
                 Button {
-                    activeRoute = route
+                    services.activeRoute = route
                 } label: {
                     if route == activeRoute {
                         Label(route.name, systemImage: "checkmark")
@@ -156,7 +179,7 @@ struct DriveView: View {
             }
             if activeRoute != nil {
                 Divider()
-                Button("No route", role: .destructive) { activeRoute = nil }
+                Button("No route", role: .destructive) { services.activeRoute = nil }
             }
         } label: {
             Label(
@@ -211,6 +234,43 @@ struct QuickMarkButton: View {
         }
         .buttonStyle(.borderedProminent)
         .tint(type.tint)
+    }
+}
+
+struct GuidanceBanner: View {
+    let instruction: String
+    let maneuverDistance: CLLocationDistance?
+    let remainingDistance: CLLocationDistance?
+    var serif = false
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
+                .font(.title2)
+                .foregroundStyle(.blue)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(instruction)
+                    .font(.system(.headline, design: serif ? .serif : .default))
+                    .lineLimit(2)
+                if let remainingDistance {
+                    Text(String(format: "%.1f km to go", remainingDistance / 1000))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer()
+            if let maneuverDistance {
+                Text(maneuverDistance >= 1000
+                    ? String(format: "%.1f km", maneuverDistance / 1000)
+                    : "\(Int(maneuverDistance)) m")
+                    .font(.title3.bold())
+                    .monospacedDigit()
+            }
+        }
+        .padding(12)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .padding(.horizontal)
+        .padding(.top, 4)
     }
 }
 

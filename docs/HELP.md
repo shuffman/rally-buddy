@@ -103,6 +103,22 @@ drives like normal features. Swipe right on one in the Features tab to
 **confirm** it (it becomes a regular feature), or swipe left to delete a
 bad guess. Scanning twice won't duplicate anything.
 
+## Turn-by-turn navigation
+
+Select a route (Routes tab, or the route chip on the Drive screen) and
+tap **Start Drive** — Rally Buddy now navigates it: spoken turn
+instructions ("In 500 meters, turn right onto East Road"), a guidance
+banner with the next turn and distance-to-go, plus all the usual feature
+callouts layered on top.
+
+- **Off route?** After a few seconds it says "Rerouting" and calculates
+  a fresh path to your destination. Rerouting needs a data connection —
+  with no signal you'll still see the original trail on the map to find
+  your way back.
+- **Older routes** (planned before this version) have no stored
+  instructions — you'll get the route line and off-route warnings, but
+  no spoken turns. Replan the route once to upgrade it.
+
 ## Routes
 
 Routes let you plan a drive ahead of time and share it.

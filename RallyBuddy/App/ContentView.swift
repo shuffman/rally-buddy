@@ -5,7 +5,6 @@ struct ContentView: View {
     private let locationService = AppServices.shared.locationService
     private let alertEngine = AppServices.shared.alertEngine
     @State private var offlineManager = OfflineMapManager()
-    @State private var activeRoute: Route?
     @State private var importErrorMessage: String?
     @State private var showingImportError = false
 
@@ -16,12 +15,11 @@ struct ContentView: View {
         TabView {
             DriveView(
                 locationService: locationService,
-                alertEngine: alertEngine,
-                activeRoute: $activeRoute
+                alertEngine: alertEngine
             )
             .tabItem { Label("Drive", systemImage: "car.fill") }
 
-            RoutesTab(activeRoute: $activeRoute)
+            RoutesTab()
                 .tabItem {
                     Label(
                         "Routes",

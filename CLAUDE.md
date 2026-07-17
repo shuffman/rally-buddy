@@ -11,8 +11,17 @@ out what's ahead — spoken audio plus a glanceable heads-up view.
 - **On-device only.** No backend, no accounts. Persistence via SwiftData.
 - **User-annotated data.** The user marks features themselves on the map;
   no derivation from OSM or other map data.
-- **Companion mode first.** No destination entry or routing in v1; the app
-  watches the road you're on. Design should not preclude adding routing later.
+- **Companion mode first** (v0.1–0.5); **turn-by-turn navigation since
+  v0.6.0** (2026-07-16): `NavigationEngine` guides along planned routes —
+  MKDirections step instructions stored per route (`guidanceCoords` /
+  `guidanceInstructions`; share format v4), announcements at 500 m/120 m,
+  off-route >60 m for 3 fixes → reroute to final destination (network
+  required; offline shows the trail only), arrival at <45 m. Harness-
+  tested (nav-test). **CarPlay navigation plan:** with guidance shipped,
+  apply for the `carplay-maps` navigation entitlement; once granted,
+  replace the driving-task template UI with CPMapTemplate + a MapLibre
+  map drawn in the CarPlay window, navigation session maneuvers, and
+  CPNavigationAlert feature callouts.
 - **Delivery:** audio callouts + visual heads-up view + CarPlay.
   CarPlay (granted 2026-07-15, **driving-task** entitlement): tab bar via
   `CarPlaySceneDelegate` — "Ahead" (top 3 upcoming + speed + drive

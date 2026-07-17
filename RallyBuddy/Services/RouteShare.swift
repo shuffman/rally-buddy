@@ -29,6 +29,9 @@ struct SharedRoute: Codable {
     var features: [Feature]
     /// Added in v2 of the format; optional for backward compatibility.
     var maneuvers: [Double]? = nil
+    /// Turn-by-turn guidance (v4); optional for backward compatibility.
+    var guidanceCoords: [Double]? = nil
+    var guidanceInstructions: [String]? = nil
 }
 
 /// Snapshot of a route + all candidate features, filtered down to the ones
@@ -39,6 +42,8 @@ struct RouteExport: Transferable {
     var path: [Double]
     var distanceMeters: Double
     var maneuvers: [Double]
+    var guidanceCoords: [Double]
+    var guidanceInstructions: [String]
     var candidateFeatures: [SharedRoute.Feature]
 
     /// Features within this many meters of the path are included.
@@ -50,6 +55,8 @@ struct RouteExport: Transferable {
         self.path = route.pathCoords
         self.distanceMeters = route.distanceMeters
         self.maneuvers = route.maneuverCoords
+        self.guidanceCoords = route.guidanceCoords
+        self.guidanceInstructions = route.guidanceInstructions
         self.candidateFeatures = features.map {
             SharedRoute.Feature(
                 type: $0.type.rawValue,
@@ -105,7 +112,9 @@ struct RouteExport: Transferable {
             path: path,
             distanceMeters: distanceMeters,
             features: nearby,
-            maneuvers: maneuvers
+            maneuvers: maneuvers,
+            guidanceCoords: guidanceCoords,
+            guidanceInstructions: guidanceInstructions
         )
     }
 }
@@ -127,12 +136,21 @@ enum RouteShareImporter {
         let data = try Data(contentsOf: url)
         let shared = try JSONDecoder().decode(SharedRoute.self, from: data)
 
+        let guidanceCoords = Route.unpack(shared.guidanceCoords ?? [])
+        let guidanceInstructions = shared.guidanceInstructions ?? []
+        let guidanceSteps: [RouteBuilder.GuidanceStep] =
+            guidanceCoords.count == guidanceInstructions.count
+            ? zip(guidanceCoords, guidanceInstructions).map {
+                RouteBuilder.GuidanceStep(coordinate: $0, instruction: $1)
+            }
+            : []
         let route = Route(
             name: shared.name,
             waypoints: Route.unpack(shared.waypoints),
             path: Route.unpack(shared.path),
             distanceMeters: shared.distanceMeters,
-            maneuvers: Route.unpack(shared.maneuvers ?? [])
+            maneuvers: Route.unpack(shared.maneuvers ?? []),
+            guidanceSteps: guidanceSteps
         )
         context.insert(route)
 

@@ -14,13 +14,18 @@ final class Route {
     /// Interleaved lat/lon pairs for turn locations (step boundaries) —
     /// used to avoid flagging intersection turns as tight corners.
     var maneuverCoords: [Double] = []
+    /// Turn-by-turn guidance: interleaved lat/lon per instruction, aligned
+    /// with `guidanceInstructions`. Empty for routes saved before v0.6.0.
+    var guidanceCoords: [Double] = []
+    var guidanceInstructions: [String] = []
 
     init(
         name: String,
         waypoints: [CLLocationCoordinate2D],
         path: [CLLocationCoordinate2D],
         distanceMeters: Double,
-        maneuvers: [CLLocationCoordinate2D] = []
+        maneuvers: [CLLocationCoordinate2D] = [],
+        guidanceSteps: [RouteBuilder.GuidanceStep] = []
     ) {
         self.name = name
         self.createdAt = .now
@@ -28,11 +33,21 @@ final class Route {
         self.pathCoords = Self.pack(path)
         self.distanceMeters = distanceMeters
         self.maneuverCoords = Self.pack(maneuvers)
+        self.guidanceCoords = Self.pack(guidanceSteps.map(\.coordinate))
+        self.guidanceInstructions = guidanceSteps.map(\.instruction)
     }
 
     var waypoints: [CLLocationCoordinate2D] { Self.unpack(waypointCoords) }
     var path: [CLLocationCoordinate2D] { Self.unpack(pathCoords) }
     var maneuvers: [CLLocationCoordinate2D] { Self.unpack(maneuverCoords) }
+
+    var guidanceSteps: [RouteBuilder.GuidanceStep] {
+        let coords = Self.unpack(guidanceCoords)
+        guard coords.count == guidanceInstructions.count else { return [] }
+        return zip(coords, guidanceInstructions).map {
+            RouteBuilder.GuidanceStep(coordinate: $0, instruction: $1)
+        }
+    }
 
     var formattedDistance: String {
         String(format: "%.1f km", distanceMeters / 1000)

@@ -1,21 +1,27 @@
 import CoreLocation
 import Foundation
+import Observation
 import SwiftData
 
 /// Shared services used by both the phone UI and the CarPlay scene.
-/// Owning the location→alert wiring here (instead of in a SwiftUI view)
-/// keeps callouts running when the phone UI isn't on screen.
+/// Owning the location→alert/guidance wiring here (instead of in a SwiftUI
+/// view) keeps callouts and navigation running when no UI is on screen.
 @MainActor
+@Observable
 final class AppServices {
     static let shared = AppServices()
 
-    let container: ModelContainer
+    @ObservationIgnored let container: ModelContainer
     let locationService = LocationService()
-    let speech = SpeechService()
+    @ObservationIgnored let speech = SpeechService()
     let alertEngine: AlertEngine
+    let navigationEngine = NavigationEngine()
+
+    /// The route drawn on the drive screen and navigated when a drive starts.
+    var activeRoute: Route?
 
     /// Snapshot of features used for alerting during the active drive.
-    private var activeFeatures: [RoadFeature] = []
+    @ObservationIgnored private var activeFeatures: [RoadFeature] = []
 
     private init() {
         do {
@@ -24,6 +30,7 @@ final class AppServices {
             fatalError("Failed to create model container: \(error)")
         }
         alertEngine = AlertEngine(speech: speech)
+        navigationEngine.announce = { [speech] text in speech.say(text) }
         locationService.onLocationUpdate = { [weak self] location in
             self?.handleLocation(location)
         }
@@ -34,11 +41,15 @@ final class AppServices {
     func startDrive() {
         activeFeatures =
             (try? container.mainContext.fetch(FetchDescriptor<RoadFeature>())) ?? []
+        if let route = activeRoute {
+            navigationEngine.start(route: route)
+        }
         locationService.startTracking()
     }
 
     func endDrive() {
         locationService.stopTracking()
+        navigationEngine.stop()
         alertEngine.reset()
     }
 
@@ -75,5 +86,6 @@ final class AppServices {
     private func handleLocation(_ location: CLLocation) {
         guard locationService.isTracking else { return }
         alertEngine.update(location: location, features: activeFeatures)
+        navigationEngine.update(location: location)
     }
 }
