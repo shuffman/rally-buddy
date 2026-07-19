@@ -9,6 +9,9 @@ out what's ahead — spoken audio plus a glanceable heads-up view.
 
 - **Native SwiftUI**, iOS 18+. A web app may follow later, built separately.
 - **On-device only.** No backend, no accounts. Persistence via SwiftData.
+  *(One scoped exception, 2026-07-19: the AI co-driver script calls the
+  Claude API once at planning time — like MKDirections, plan at home;
+  drives replay the stored script offline. API key lives in the Keychain.)*
 - **User-annotated data.** The user marks features themselves on the map;
   no derivation from OSM or other map data.
 - **Companion mode first** (v0.1–0.5); **turn-by-turn navigation since
@@ -125,6 +128,16 @@ number on upload, so repeat uploads need no project edits.
   once per approach via SpeechService.
 - `Services/SpeechService.swift` — AVSpeechSynthesizer with audio ducking.
 - `Services/RouteBuilder.swift` — MKDirections leg-by-leg planning.
+- `Services/CalloutPlanner.swift` — AI co-driver script: orders confirmed
+  features along a route (corridor 100 m, direction-filtered), one Claude
+  API call (`claude-opus-4-8`, structured output) phrases them as linked
+  pace notes keyed by feature index; lines are anchored to feature
+  coordinates and stored on the Route (`scriptCoords`/`scriptLines`).
+  During a drive AlertEngine speaks script lines by proximity/bearing and
+  mutes the templated callout for features within 60 m of a line; ad-hoc
+  quick-marks still use templated speech. UI: Routes tab → context menu →
+  Co-Driver Script (CoDriverScriptSheet: generate/preview/edit/save;
+  key stored via `KeychainStore`).
 - `Services/RouteShare.swift` — `.rallybuddy` export (Transferable) + import.
 - `Services/OfflineMapManager.swift` — MapLibre offline packs (download /
   list / delete regions), bounding-box helpers.
