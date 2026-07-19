@@ -119,13 +119,46 @@ callouts layered on top.
   instructions — you'll get the route line and off-route warnings, but
   no spoken turns. Replan the route once to upgrade it.
 
+## AI co-driver scripts
+
+A route can carry a written pace-note script — instead of independent
+callouts, the co-driver links what's ahead: "Tightens after the crest,
+then clear to pass."
+
+Routes tab → long-press a route → **Co-Driver Script** → **Generate
+Script**. With a Claude API key (optional — entered once, kept in your
+Keychain), Claude writes natural linked notes from the route's features;
+without one, a built-in template writes basic callouts. Either way you
+can edit or delete individual lines before saving. Routes with a script
+show a purple waveform icon, and drives replay the saved lines entirely
+offline — the internet is only used while generating.
+
+If the generate button is grayed out, the route has no confirmed
+features yet — mark some or run **Detect Features** first.
+
 ## Routes
 
 Routes let you plan a drive ahead of time and share it.
 
-**Planning:** Routes tab → **+** → tap waypoints on the map in order.
-After each tap the path snaps to real roads and the running distance
-updates. **Undo** removes the last waypoint. **Save** names the route.
+**Planning:** Routes tab → **+** → **Plan Route** → tap waypoints on the
+map in order. After each tap the path snaps to real roads and the running
+distance updates. **Undo** removes the last waypoint. **Save** names the
+route.
+
+**Generating a loop:** no route in mind? Routes tab → **+** →
+**Generate Loop**. The start marker defaults to where you are (tap the
+map to move it), the slider picks a distance from 20 to 200 km, and
+**Generate** does the rest: Rally Buddy reads the surrounding roads from
+OpenStreetMap and proposes up to three loop drives that favor curvy,
+paved, quiet roads — skipping gravel and traffic lights where the map
+data allows. Each proposal is a colored line on the map with a card
+showing distance, estimated time, corner count, and traffic signals; tap
+a card to preview, then **Save** the one you like. It becomes a normal
+route — turn-by-turn guidance included, features auto-scanned — so you
+can share it, download offline maps for it, or generate a co-driver
+script. Generating takes up to half a minute and needs internet. Road
+quality is only as good as the local map data — treat the first drive as
+reconnaissance.
 
 **Driving a route:** select it — either tap it in the Routes tab (green
 checkmark) or use the route chip at the bottom of the Drive screen. The
@@ -187,9 +220,10 @@ download that ahead of time:
 Downloaded areas render at full street detail with no signal at all.
 Swipe left on an area to delete it and free the space.
 
-Two things still need a connection: **planning** a new route (road
-snapping uses an online service) and downloading new map areas. Plan at
-home, drive anywhere.
+A few things still need a connection: **planning** a route (road
+snapping uses an online service), **generating a loop** (road data
+comes from OpenStreetMap), **generating a co-driver script**, and
+downloading new map areas. Plan at home, drive anywhere.
 
 ## Troubleshooting
 
@@ -224,6 +258,11 @@ re-mark the feature, or ask a friend who has the route to share it back.
 
 ## Privacy
 
-Rally Buddy keeps everything on your device. Your location is used live
-for callouts and is not stored, transmitted, or logged. Routes and
-features leave your phone only when *you* share them as a file.
+Rally Buddy keeps your data on your device. Your location is used live
+for callouts and is not stored or logged. Online actions you trigger
+send only what they need: planning a route sends its waypoints to
+Apple's routing service, generating a loop asks OpenStreetMap for roads
+around your chosen start point, and generating an AI co-driver script
+sends that route's features to the Claude API (only if you've added an
+API key). Nothing is sent in the background, and routes and features
+leave your phone only when *you* share them as a file.

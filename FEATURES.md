@@ -80,6 +80,7 @@ This document details a list of useful, reasonable, and highly beneficial featur
   * [AlertEngine.swift](file:///Users/shuffman/Projects/rally-buddy/RallyBuddy/Services/AlertEngine.swift#L12)
 
 ### AI Voice Co-Driver (LLM-Generated Pace-Note Script)
+* **Status: ✅ shipped 2026-07-19** (`CalloutPlanner` + `CoDriverScriptSheet`; optional API key with a templated offline fallback). The pre-generated-audio extension below remains open.
 * **Description**: Upgrade callouts from independent per-feature announcements to a coherent, context-aware pace-note narration — the co-driver looks ahead along the route and links features naturally ("Tightens after the crest, then clear to pass") instead of firing two disconnected alerts.
 * **Design approach — compile at plan time, not live**:
   * No LLM call in the driving hot path. When a [Route](file:///Users/shuffman/Projects/rally-buddy/RallyBuddy/Models/Route.swift) is planned (or re-scanned), a "callout planner" walks the route polyline, assembles the ordered sequence of features/maneuvers with spacing and severity, and sends that to Claude once to generate the full drive's pace-note script — phrased lines anchored to trigger coordinates.

@@ -24,6 +24,14 @@ Native SwiftUI iOS app. All data stays on your device.
   like a good co-driver
 - **Planned routes** — tap waypoints on a map; the path snaps to real
   roads via MKDirections
+- **Loop generator** — pick a start and a distance and Rally Buddy
+  proposes three loop drives built from OpenStreetMap data, favoring
+  curvy, paved, quiet roads — no gravel, few stoplights
+- **Turn-by-turn navigation** — spoken instructions along planned
+  routes, with off-route detection and rerouting
+- **AI co-driver scripts** — optionally have Claude write linked pace
+  notes for a route ("Tightens after the crest, then clear to pass");
+  generated once at home, replayed offline in the car
 - **Route sharing** — AirDrop a route and every marked feature along it as
   a `.rallybuddy` file; opening one imports it, duplicates skipped
 - **Offline maps** — download regions (around you, or a corridor around a
@@ -38,7 +46,7 @@ Native SwiftUI iOS app. All data stays on your device.
 - **CarPlay** — glanceable card on the car screen: next feature with
   chevron grade, live distance, speed, and a drive start/stop button
 
-Planned: CarPlay, live peer-to-peer nearby sync, off-route detection.
+Planned: live peer-to-peer nearby sync, GPX/KML import and export.
 
 ## Development
 
