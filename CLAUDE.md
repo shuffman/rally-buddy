@@ -10,7 +10,10 @@ out what's ahead — spoken audio plus a glanceable heads-up view.
 - **Native SwiftUI**, iOS 18+. A web app may follow later, built separately.
 - **On-device only.** No backend, no accounts. Persistence via SwiftData.
 - **User-annotated data.** The user marks features themselves on the map;
-  no derivation from OSM or other map data.
+  no derivation from OSM or other map data. *(Superseded in stages: the
+  FeatureDetector suggests features from OSM since v0.5, and loop
+  generation since 2026-07 derives whole routes from OSM — in both cases
+  a user pick/confirmation still gates everything that lands in the DB.)*
 - **Companion mode first** (v0.1–0.5); **turn-by-turn navigation since
   v0.6.0** (2026-07-16): `NavigationEngine` guides along planned routes —
   MKDirections step instructions stored per route (`guidanceCoords` /
@@ -35,6 +38,16 @@ out what's ahead — spoken audio plus a glanceable heads-up view.
   ticked on the App ID under Additional Capabilities (portal UI only,
   not API), and doing so invalidates provisioning profiles — recreate
   the App Store profile via the ASC API afterwards.
+- **Loop generation** (2026-07-19): given a start + target distance,
+  `RouteGenerator` proposes up to 3 loop drives — Overpass fetches
+  mid-class paved roads + traffic signals around the start, ways are
+  scored (curvy/quiet/paved), loop waypoints are placed on the best
+  roads, MKDirections connects them (drivability + guidance for free),
+  and the real polylines are scored/ranked (curviness, good-road
+  fraction, signals, distance error, double-back penalty). Top-3 picker
+  in RouteGeneratorView (Routes tab → + → Generate Loop). Rejected
+  alternatives: custom OSM-graph routing (too big), third-party routing
+  APIs (needs keys). All scoring weights are untested guesses.
 - **Routes are planned, not recorded** (agreed 2026-07-12): the user taps
   waypoints on a map and MKDirections snaps the path to public roads.
   "Replaying" a route = selecting it before a drive; it draws on the map and
@@ -124,7 +137,16 @@ number on upload, so repeat uploads need no project edits.
   computes what's ahead (distance + heading cone) and announces each feature
   once per approach via SpeechService.
 - `Services/SpeechService.swift` — AVSpeechSynthesizer with audio ducking.
-- `Services/RouteBuilder.swift` — MKDirections leg-by-leg planning.
+- `Services/RouteBuilder.swift` — MKDirections leg-by-leg planning, with
+  optional inter-leg pacing + a LegCache (endpoint-keyed memoization) for
+  the generator's request volume.
+- `Services/RouteGenerator.swift` — loop generation: Overpass road/signal
+  fetch, way scoring, hash-grid spatial index, waypoint placement on a
+  circle through the start, candidate scoring/dedup. Pure math is
+  standalone-compilable — synthetic tests (ring snap, out-and-back
+  penalty, duplicate drop) pass. MKDirections budget: ≤28 legs per
+  generation, 800 ms pacing, throttle retry — supersedes the old "cache
+  per-leg results if this becomes a problem" note (the cache exists now).
 - `Services/RouteShare.swift` — `.rallybuddy` export (Transferable) + import.
 - `Services/OfflineMapManager.swift` — MapLibre offline packs (download /
   list / delete regions), bounding-box helpers.
@@ -163,8 +185,9 @@ number on upload, so repeat uploads need no project edits.
   pending real drives.
 - **Background location UX** and CarPlay entitlement are deferred.
 - **Route planner replans every leg on each waypoint tap** — fine for a
-  handful of waypoints, but MKDirections throttles aggressive use; cache
-  per-leg results if this becomes a problem.
+  handful of waypoints, but MKDirections throttles aggressive use;
+  `RouteBuilder.LegCache` exists now (built for the generator) — pass one
+  from RoutePlannerView if tap-planning ever hits the throttle.
 - **Off-route detection** while driving a route: not implemented; the route
   is currently just drawn on the map.
 - **OpenFreeMap has no formal SLA or offline-bulk policy**; downloads are

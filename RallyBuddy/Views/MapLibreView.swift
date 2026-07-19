@@ -40,6 +40,29 @@ struct MapMarker: Equatable {
     }
 }
 
+/// An extra polyline drawn on the map — used by the loop generator to show
+/// several candidate routes at once, color-keyed to their stat cards.
+struct PathOverlay: Equatable {
+    let id: String
+    let latLons: [[Double]]
+    /// Index into the theme's overlay palette.
+    let colorIndex: Int
+    /// The selected overlay: drawn bolder and above the rest.
+    let emphasized: Bool
+
+    init(
+        id: String,
+        coordinates: [CLLocationCoordinate2D],
+        colorIndex: Int,
+        emphasized: Bool = false
+    ) {
+        self.id = id
+        self.latLons = coordinates.map { [$0.latitude, $0.longitude] }
+        self.colorIndex = colorIndex
+        self.emphasized = emphasized
+    }
+}
+
 /// SwiftUI wrapper around MLNMapView (MapLibre) used by both the drive
 /// screen and the route planner. Renders OpenFreeMap vector tiles, which
 /// the OfflineMapManager can download for offline use. The route is drawn
@@ -47,6 +70,7 @@ struct MapMarker: Equatable {
 struct MapLibreView: UIViewRepresentable {
     var markers: [MapMarker] = []
     var pathCoordinates: [CLLocationCoordinate2D] = []
+    var overlays: [PathOverlay] = []
     var theme: MapTheme = .standard
     var followsCourse: Bool = false
     /// When the path changes while not following, zoom to fit it.
@@ -145,6 +169,29 @@ struct MapLibreView: UIViewRepresentable {
             }
         }
 
+        if coordinator.overlayState != overlays || themeChanged {
+            // Refit only when overlay geometry changes, not on selection.
+            let geometryChanged =
+                coordinator.overlayState.map { [$0.id, $0.latLons] as [AnyHashable] }
+                != overlays.map { [$0.id, $0.latLons] as [AnyHashable] }
+            coordinator.overlayState = overlays
+            if let style = mapView.style {
+                coordinator.updateOverlayLayers(on: style)
+            }
+            let union = overlays.flatMap { $0.latLons }
+            if geometryChanged, fitPathOnChange, !followsCourse, union.count >= 2 {
+                var coords = union.map {
+                    CLLocationCoordinate2D(latitude: $0[0], longitude: $0[1])
+                }
+                mapView.setVisibleCoordinates(
+                    &coords,
+                    count: UInt(coords.count),
+                    edgePadding: UIEdgeInsets(top: 80, left: 50, bottom: 140, right: 50),
+                    animated: true
+                )
+            }
+        }
+
         if followsCourse != coordinator.wasFollowingCourse {
             coordinator.wasFollowingCourse = followsCourse
             mapView.setUserTrackingMode(
@@ -171,12 +218,15 @@ struct MapLibreView: UIViewRepresentable {
         var markers: [MapMarker] = []
         var markerAnnotations: [MarkerAnnotation] = []
         var pathLatLons: [[Double]] = []
+        var overlayState: [PathOverlay] = []
         var wasFollowingCourse = false
         var lastRecenterToken = 0
         private var hasCenteredOnUser = false
+        private var overlayIDsOnStyle: Set<String> = []
 
         private static let routeSourceID = "rallybuddy-route-source"
         private static let routeLayerID = "rallybuddy-route-line"
+        private static let overlayPrefix = "rallybuddy-overlay-"
 
         @objc func handleTap(_ gesture: UITapGestureRecognizer) {
             guard let mapView = gesture.view as? MLNMapView, let onTap else { return }
@@ -185,7 +235,76 @@ struct MapLibreView: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
+            // A fresh style has none of our layers, whatever we tracked.
+            overlayIDsOnStyle = []
             updateRouteLayer(on: style)
+            updateOverlayLayers(on: style)
+        }
+
+        /// Creates/refreshes one source + line layer per overlay and drops
+        /// layers whose overlay vanished. Emphasized overlays are added
+        /// last so they draw on top.
+        func updateOverlayLayers(on style: MLNStyle) {
+            let currentIDs = Set(overlayState.map(\.id))
+            for stale in overlayIDsOnStyle.subtracting(currentIDs) {
+                if let layer = style.layer(withIdentifier: Self.overlayPrefix + "line-" + stale) {
+                    style.removeLayer(layer)
+                }
+                if let source = style.source(withIdentifier: Self.overlayPrefix + "source-" + stale) {
+                    style.removeSource(source)
+                }
+            }
+            overlayIDsOnStyle = currentIDs
+
+            let standardPalette: [UIColor] = [.systemBlue, .systemOrange, .systemPurple]
+            // Sepia-friendly inks for the Explorer parchment.
+            let explorerPalette: [UIColor] = [
+                UIColor(red: 0.35, green: 0.23, blue: 0.10, alpha: 1),
+                UIColor(red: 0.55, green: 0.15, blue: 0.12, alpha: 1),
+                UIColor(red: 0.18, green: 0.32, blue: 0.16, alpha: 1),
+            ]
+
+            for overlay in overlayState.sorted(by: { !$0.emphasized && $1.emphasized }) {
+                let coordinates = overlay.latLons.map {
+                    CLLocationCoordinate2D(latitude: $0[0], longitude: $0[1])
+                }
+                let shape: MLNShape
+                if coordinates.count >= 2 {
+                    var coords = coordinates
+                    shape = MLNPolylineFeature(coordinates: &coords, count: UInt(coords.count))
+                } else {
+                    shape = MLNShapeCollectionFeature(shapes: [])
+                }
+
+                let sourceID = Self.overlayPrefix + "source-" + overlay.id
+                let source: MLNShapeSource
+                if let existing = style.source(withIdentifier: sourceID) as? MLNShapeSource {
+                    source = existing
+                    source.shape = shape
+                } else {
+                    source = MLNShapeSource(identifier: sourceID, shape: shape, options: nil)
+                    style.addSource(source)
+                }
+
+                let layerID = Self.overlayPrefix + "line-" + overlay.id
+                if let old = style.layer(withIdentifier: layerID) {
+                    style.removeLayer(old)
+                }
+                let layer = MLNLineStyleLayer(identifier: layerID, source: source)
+                layer.lineCap = NSExpression(forConstantValue: "round")
+                layer.lineJoin = NSExpression(forConstantValue: "round")
+                let palette = theme == .explorer ? explorerPalette : standardPalette
+                let color = palette[overlay.colorIndex % palette.count]
+                layer.lineColor = NSExpression(forConstantValue: color)
+                layer.lineOpacity = NSExpression(
+                    forConstantValue: overlay.emphasized ? 0.9 : 0.35
+                )
+                layer.lineWidth = NSExpression(forConstantValue: overlay.emphasized ? 6 : 4)
+                if theme == .explorer {
+                    layer.lineDashPattern = NSExpression(forConstantValue: [0.1, 1.9])
+                }
+                style.addLayer(layer)
+            }
         }
 
         /// Creates or refreshes the route source + line layer to match the

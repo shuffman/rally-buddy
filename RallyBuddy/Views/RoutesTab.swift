@@ -10,6 +10,7 @@ struct RoutesTab: View {
     @Query(sort: \Route.createdAt, order: .reverse) private var routes: [Route]
     @Query private var features: [RoadFeature]
     @State private var showingPlanner = false
+    @State private var showingGenerator = false
     @State private var isScanning = false
     @State private var scanMessage: String?
 
@@ -69,18 +70,26 @@ struct RoutesTab: View {
                     ContentUnavailableView(
                         "No routes yet",
                         systemImage: "point.topleft.down.to.point.bottomright.curvepath",
-                        description: Text("Plan a route by tapping waypoints on the map, or open a .rallybuddy file shared with you.")
+                        description: Text("Plan a route by tapping waypoints on the map, auto-generate a loop drive, or open a .rallybuddy file shared with you.")
                     )
                 }
             }
             .navigationTitle("Routes")
             .toolbar {
-                Button("Plan Route", systemImage: "plus") {
-                    showingPlanner = true
+                Menu("Add Route", systemImage: "plus") {
+                    Button("Plan Route", systemImage: "point.topleft.down.to.point.bottomright.curvepath") {
+                        showingPlanner = true
+                    }
+                    Button("Generate Loop", systemImage: "sparkles") {
+                        showingGenerator = true
+                    }
                 }
             }
             .fullScreenCover(isPresented: $showingPlanner) {
                 RoutePlannerView()
+            }
+            .fullScreenCover(isPresented: $showingGenerator) {
+                RouteGeneratorView()
             }
             .overlay {
                 if isScanning {
