@@ -41,6 +41,7 @@ final class AppServices {
     func startDrive() {
         activeFeatures =
             (try? container.mainContext.fetch(FetchDescriptor<RoadFeature>())) ?? []
+        alertEngine.setScript(activeRoute?.paceNotes ?? [])
         if let route = activeRoute {
             navigationEngine.start(route: route)
         }

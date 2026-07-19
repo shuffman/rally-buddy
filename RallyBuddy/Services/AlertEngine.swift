@@ -34,15 +34,54 @@ final class AlertEngine {
     private(set) var upcoming: [UpcomingFeature] = []
 
     private var announced: Set<PersistentIdentifier> = []
+    /// Scripted co-driver lines for the active route; when a feature sits
+    /// within `scriptCoverageRadius` of a line's trigger point, the script
+    /// speaks for it and the templated callout stays silent.
+    private var scriptNotes: [PaceNote] = []
+    private var announcedNotes: Set<UUID> = []
+    private let scriptCoverageRadius: CLLocationDistance = 60
     let speech: SpeechService
 
     init(speech: SpeechService) {
         self.speech = speech
     }
 
+    /// Install the pace-note script for the drive that is starting.
+    func setScript(_ notes: [PaceNote]) {
+        scriptNotes = notes
+        announcedNotes = []
+    }
+
     func update(location: CLLocation, features: [RoadFeature]) {
         let course = location.course
         var results: [UpcomingFeature] = []
+
+        for note in scriptNotes {
+            let noteLocation = CLLocation(
+                latitude: note.coordinate.latitude,
+                longitude: note.coordinate.longitude
+            )
+            let distance = location.distance(from: noteLocation)
+            guard distance <= lookaheadDistance else {
+                if distance > lookaheadDistance * 1.5 {
+                    announcedNotes.remove(note.id)
+                }
+                continue
+            }
+            if course >= 0 {
+                let bearingToNote = Self.bearing(
+                    from: location.coordinate,
+                    to: note.coordinate
+                )
+                guard Self.angleDelta(course, bearingToNote) <= headingCone
+                    || distance < 30
+                else { continue }
+            }
+            if !announcedNotes.contains(note.id) {
+                announcedNotes.insert(note.id)
+                speech.say(note.text)
+            }
+        }
 
         for feature in features {
             let featureLocation = CLLocation(
@@ -83,7 +122,23 @@ final class AlertEngine {
 
         for item in results where !announced.contains(item.id) {
             announced.insert(item.id)
+            guard !isScriptCovered(item.feature) else { continue }
             speech.say(item.announcement)
+        }
+    }
+
+    /// Whether a scripted line already voices this feature.
+    private func isScriptCovered(_ feature: RoadFeature) -> Bool {
+        guard !scriptNotes.isEmpty else { return false }
+        let featureLocation = CLLocation(
+            latitude: feature.latitude,
+            longitude: feature.longitude
+        )
+        return scriptNotes.contains { note in
+            CLLocation(
+                latitude: note.coordinate.latitude,
+                longitude: note.coordinate.longitude
+            ).distance(from: featureLocation) < scriptCoverageRadius
         }
     }
 
@@ -96,6 +151,8 @@ final class AlertEngine {
     func reset() {
         upcoming = []
         announced = []
+        scriptNotes = []
+        announcedNotes = []
     }
 
     // MARK: - Geometry

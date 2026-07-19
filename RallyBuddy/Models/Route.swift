@@ -2,6 +2,14 @@ import CoreLocation
 import Foundation
 import SwiftData
 
+/// One line of a generated co-driver script, anchored to the point on the
+/// route where it should be spoken.
+struct PaceNote: Identifiable {
+    let id = UUID()
+    var coordinate: CLLocationCoordinate2D
+    var text: String
+}
+
 @Model
 final class Route {
     var name: String
@@ -18,6 +26,10 @@ final class Route {
     /// with `guidanceInstructions`. Empty for routes saved before v0.6.0.
     var guidanceCoords: [Double] = []
     var guidanceInstructions: [String] = []
+    /// AI co-driver script: interleaved lat/lon trigger points, aligned with
+    /// `scriptLines`. Generated at planning time so drives work offline.
+    var scriptCoords: [Double] = []
+    var scriptLines: [String] = []
 
     init(
         name: String,
@@ -47,6 +59,17 @@ final class Route {
         return zip(coords, guidanceInstructions).map {
             RouteBuilder.GuidanceStep(coordinate: $0, instruction: $1)
         }
+    }
+
+    var paceNotes: [PaceNote] {
+        let coords = Self.unpack(scriptCoords)
+        guard coords.count == scriptLines.count else { return [] }
+        return zip(coords, scriptLines).map { PaceNote(coordinate: $0, text: $1) }
+    }
+
+    func setPaceNotes(_ notes: [PaceNote]) {
+        scriptCoords = Self.pack(notes.map(\.coordinate))
+        scriptLines = notes.map(\.text)
     }
 
     var formattedDistance: String {

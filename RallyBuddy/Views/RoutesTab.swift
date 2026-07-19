@@ -13,6 +13,7 @@ struct RoutesTab: View {
     @State private var showingGenerator = false
     @State private var isScanning = false
     @State private var scanMessage: String?
+    @State private var scriptRoute: Route?
 
     var body: some View {
         NavigationStack {
@@ -29,6 +30,11 @@ struct RoutesTab: View {
                                     Text("\(route.formattedDistance) · \(route.createdAt.formatted(date: .abbreviated, time: .omitted))")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
+                                }
+                                if !route.scriptLines.isEmpty {
+                                    Image(systemName: "waveform")
+                                        .font(.caption)
+                                        .foregroundStyle(.purple)
                                 }
                                 Spacer()
                                 if route == activeRoute {
@@ -53,6 +59,11 @@ struct RoutesTab: View {
                             Label("Detect Features", systemImage: "wand.and.stars")
                         }
                         .disabled(isScanning)
+                        Button {
+                            scriptRoute = route
+                        } label: {
+                            Label("Co-Driver Script", systemImage: "waveform")
+                        }
                     }
                     .swipeActions(edge: .leading) {
                         Button {
@@ -90,6 +101,9 @@ struct RoutesTab: View {
             }
             .fullScreenCover(isPresented: $showingGenerator) {
                 RouteGeneratorView()
+            }
+            .sheet(item: $scriptRoute) { route in
+                CoDriverScriptSheet(route: route, features: features)
             }
             .overlay {
                 if isScanning {
