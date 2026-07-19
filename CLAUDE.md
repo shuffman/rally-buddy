@@ -137,7 +137,11 @@ number on upload, so repeat uploads need no project edits.
   mutes the templated callout for features within 60 m of a line; ad-hoc
   quick-marks still use templated speech. UI: Routes tab → context menu →
   Co-Driver Script (CoDriverScriptSheet: generate/preview/edit/save;
-  key stored via `KeychainStore`).
+  key stored via `KeychainStore`). **The key is optional**: with no key,
+  `templateScript` composes basic callouts from fixed templates (offline,
+  deterministic) behind the same PaceNote interface — the LLM only ever
+  upgrades phrasing quality. Nothing outside CalloutPlanner and the sheet
+  touches the API; every core function works with no key present.
 - `Services/RouteShare.swift` — `.rallybuddy` export (Transferable) + import.
 - `Services/OfflineMapManager.swift` — MapLibre offline packs (download /
   list / delete regions), bounding-box helpers.

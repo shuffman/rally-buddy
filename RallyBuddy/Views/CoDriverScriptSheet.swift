@@ -18,16 +18,20 @@ struct CoDriverScriptSheet: View {
         CalloutPlanner.orderedFeatures(route: route, features: features).count
     }
 
+    private var trimmedKey: String {
+        apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     var body: some View {
         NavigationStack {
             Form {
                 if KeychainStore.loadAPIKey() == nil {
                     Section {
-                        SecureField("Claude API key", text: $apiKey)
+                        SecureField("Claude API key (optional)", text: $apiKey)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                     } footer: {
-                        Text("Used only while generating; stored in the Keychain. Drives replay the saved script offline.")
+                        Text("Optional. With a key, Claude writes natural linked pace notes; without one, a built-in template writes basic callouts. Used only while generating; stored in the Keychain. Drives always replay the saved script offline.")
                     }
                 }
 
@@ -51,6 +55,8 @@ struct CoDriverScriptSheet: View {
                 } footer: {
                     if featureCount == 0 {
                         Text("No confirmed features along this route yet. Mark features or run Detect Features first.")
+                    } else if trimmedKey.isEmpty {
+                        Text("\(featureCount) features along this route. No API key — the built-in template will be used.")
                     } else {
                         Text("\(featureCount) features along this route.")
                     }
@@ -92,16 +98,22 @@ struct CoDriverScriptSheet: View {
     private func generate() {
         errorMessage = nil
         isGenerating = true
-        let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        let key = trimmedKey
         Task {
             do {
-                let notes = try await CalloutPlanner.generateScript(
-                    route: route,
-                    features: features,
-                    apiKey: key
-                )
-                KeychainStore.saveAPIKey(key)
-                lines = notes
+                if key.isEmpty {
+                    lines = try CalloutPlanner.templateScript(
+                        route: route,
+                        features: features
+                    )
+                } else {
+                    lines = try await CalloutPlanner.generateScript(
+                        route: route,
+                        features: features,
+                        apiKey: key
+                    )
+                    KeychainStore.saveAPIKey(key)
+                }
             } catch {
                 errorMessage = error.localizedDescription
             }

@@ -81,6 +81,53 @@ enum CalloutPlanner {
         return results.sorted { $0.distanceAlongRoute < $1.distanceAlongRoute }
     }
 
+    // MARK: - Templated script (offline, no API key)
+
+    /// Rule-based composer: the same ordered features phrased from fixed
+    /// templates. Deterministic and fully offline — the fallback when no
+    /// Claude API key is available.
+    static func templateScript(
+        route: Route,
+        features: [RoadFeature]
+    ) throws -> [PaceNote] {
+        let ordered = orderedFeatures(route: route, features: features)
+        guard !ordered.isEmpty else { throw PlannerError.noFeatures }
+
+        return ordered.enumerated().map { index, item in
+            var text = phrase(for: item.feature)
+            if index + 1 < ordered.count {
+                let next = ordered[index + 1]
+                if next.distanceAlongRoute - item.distanceAlongRoute < 400 {
+                    text += ", then \(shortPhrase(for: next.feature))"
+                }
+            }
+            if item.feature.type == .tightCorner, item.feature.chevronCount == 3 {
+                text += ". Slow down"
+            }
+            let note = item.feature.note.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !note.isEmpty {
+                text += ". \(note)"
+            }
+            return PaceNote(coordinate: item.coordinate, text: text)
+        }
+    }
+
+    private static func phrase(for feature: RoadFeature) -> String {
+        switch feature.type {
+        case .tightCorner: "\(feature.spokenName) ahead"
+        case .passingLane: "Passing lane ahead"
+        case .residentialZone: "Residential zone ahead, watch for people"
+        }
+    }
+
+    private static func shortPhrase(for feature: RoadFeature) -> String {
+        switch feature.type {
+        case .tightCorner: "a \(feature.spokenName.lowercased())"
+        case .passingLane: "clear to pass"
+        case .residentialZone: "a residential zone"
+        }
+    }
+
     // MARK: - Script generation
 
     static func generateScript(
