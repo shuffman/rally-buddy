@@ -79,6 +79,24 @@ This document details a list of useful, reasonable, and highly beneficial featur
   * [SpeechService.swift](file:///Users/shuffman/Projects/rally-buddy/RallyBuddy/Services/SpeechService.swift)
   * [AlertEngine.swift](file:///Users/shuffman/Projects/rally-buddy/RallyBuddy/Services/AlertEngine.swift#L12)
 
+### AI Voice Co-Driver (LLM-Generated Pace-Note Script)
+* **Description**: Upgrade callouts from independent per-feature announcements to a coherent, context-aware pace-note narration — the co-driver looks ahead along the route and links features naturally ("Tightens after the crest, then clear to pass") instead of firing two disconnected alerts.
+* **Design approach — compile at plan time, not live**:
+  * No LLM call in the driving hot path. When a [Route](file:///Users/shuffman/Projects/rally-buddy/RallyBuddy/Models/Route.swift) is planned (or re-scanned), a "callout planner" walks the route polyline, assembles the ordered sequence of features/maneuvers with spacing and severity, and sends that to Claude once to generate the full drive's pace-note script — phrased lines anchored to trigger coordinates.
+  * The script is persisted with the route, so drives work fully offline (consistent with the offline-maps philosophy) with no latency, cost, or cell-coverage failure modes mid-drive.
+  * At drive time, [AlertEngine](file:///Users/shuffman/Projects/rally-buddy/RallyBuddy/Services/AlertEngine.swift) triggers pre-scripted lines by proximity/bearing exactly as it does today; ad-hoc self-marked features fall back to the current templated callouts.
+  * Note: this is the one feature that bends the "on-device only" rule — an API call is needed at *planning* time (plan at home, like route planning via MKDirections). Drives remain offline.
+* **Optional extension — pre-generated audio**: at plan time, also render the script's lines to audio clips via a TTS API for a real co-driver voice; fall back to AVSpeechSynthesizer when clips are absent. Pairs with the personality presets above.
+* **UI/UX Details**:
+  * A "Generate co-driver script" step in the route planner (with a preview list of the lines, editable before saving).
+  * Grouped callouts respect a lookahead window scaled by current speed (~30–60 s) so linked phrasing matches what the driver actually experiences.
+* **Files impacted**:
+  * [Route.swift](file:///Users/shuffman/Projects/rally-buddy/RallyBuddy/Models/Route.swift) (persist the script + trigger coords)
+  * [AlertEngine.swift](file:///Users/shuffman/Projects/rally-buddy/RallyBuddy/Services/AlertEngine.swift)
+  * [SpeechService.swift](file:///Users/shuffman/Projects/rally-buddy/RallyBuddy/Services/SpeechService.swift)
+  * [RoutePlannerView.swift](file:///Users/shuffman/Projects/rally-buddy/RallyBuddy/Views/RoutePlannerView.swift)
+  * New service: callout planner + Claude API client (plan-time only)
+
 ---
 
 ## 4. Connectivity & Data Transfer
