@@ -8,6 +8,8 @@ struct PaceNote: Identifiable {
     let id = UUID()
     var coordinate: CLLocationCoordinate2D
     var text: String
+    /// Direction of travel this note applies to (compass degrees); nil = both.
+    var bearing: Double?
 }
 
 @Model
@@ -30,6 +32,10 @@ final class Route {
     /// `scriptLines`. Generated at planning time so drives work offline.
     var scriptCoords: [Double] = []
     var scriptLines: [String] = []
+    /// Per-note travel-direction bearing (compass degrees; -1 = both
+    /// directions). Aligned with `scriptLines`; empty for routes whose
+    /// script was saved before bearings were stored.
+    var scriptBearings: [Double] = []
 
     init(
         name: String,
@@ -64,12 +70,19 @@ final class Route {
     var paceNotes: [PaceNote] {
         let coords = Self.unpack(scriptCoords)
         guard coords.count == scriptLines.count else { return [] }
-        return zip(coords, scriptLines).map { PaceNote(coordinate: $0, text: $1) }
+        // Older scripts have no stored bearings; treat those as both-direction.
+        let bearings = scriptBearings.count == scriptLines.count
+            ? scriptBearings
+            : Array(repeating: -1.0, count: scriptLines.count)
+        return zip(zip(coords, scriptLines), bearings).map { pair, bearing in
+            PaceNote(coordinate: pair.0, text: pair.1, bearing: bearing < 0 ? nil : bearing)
+        }
     }
 
     func setPaceNotes(_ notes: [PaceNote]) {
         scriptCoords = Self.pack(notes.map(\.coordinate))
         scriptLines = notes.map(\.text)
+        scriptBearings = notes.map { $0.bearing ?? -1 }
     }
 
     var formattedDistance: String {

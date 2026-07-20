@@ -25,14 +25,12 @@ struct CoDriverScriptSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                if KeychainStore.loadAPIKey() == nil {
-                    Section {
-                        SecureField("Claude API key (optional)", text: $apiKey)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                    } footer: {
-                        Text("Optional. With a key, Claude writes natural linked pace notes; without one, a built-in template writes basic callouts. Used only while generating; stored in the Keychain. Drives always replay the saved script offline.")
-                    }
+                Section {
+                    SecureField("Claude API key (optional)", text: $apiKey)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                } footer: {
+                    Text("Optional. With a key, Claude writes natural linked pace notes; without one, a built-in template writes basic callouts. Clear the field to remove a saved key. Used only while generating; stored in the Keychain. Drives always replay the saved script offline.")
                 }
 
                 Section {
@@ -102,6 +100,8 @@ struct CoDriverScriptSheet: View {
         Task {
             do {
                 if key.isEmpty {
+                    // Empty field removes any previously saved key.
+                    KeychainStore.deleteAPIKey()
                     lines = try CalloutPlanner.templateScript(
                         route: route,
                         features: features

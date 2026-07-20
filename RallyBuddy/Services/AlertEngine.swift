@@ -34,12 +34,13 @@ final class AlertEngine {
     private(set) var upcoming: [UpcomingFeature] = []
 
     private var announced: Set<PersistentIdentifier> = []
-    /// Scripted co-driver lines for the active route; when a feature sits
-    /// within `scriptCoverageRadius` of a line's trigger point, the script
-    /// speaks for it and the templated callout stays silent.
+    /// Scripted co-driver lines for the active route; a feature's templated
+    /// callout stays silent when a script line is anchored to that same
+    /// feature. Notes are placed exactly at their feature's coordinate, so a
+    /// tight radius ties coverage to that feature and not merely a nearby one.
     private var scriptNotes: [PaceNote] = []
     private var announcedNotes: Set<UUID> = []
-    private let scriptCoverageRadius: CLLocationDistance = 60
+    private let scriptCoverageRadius: CLLocationDistance = 10
     let speech: SpeechService
 
     init(speech: SpeechService) {
@@ -76,6 +77,10 @@ final class AlertEngine {
                 guard Self.angleDelta(course, bearingToNote) <= headingCone
                     || distance < 30
                 else { continue }
+
+                if let noteBearing = note.bearing,
+                    Self.angleDelta(course, noteBearing) > directionTolerance
+                { continue }
             }
             if !announcedNotes.contains(note.id) {
                 announcedNotes.insert(note.id)

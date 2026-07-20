@@ -108,7 +108,11 @@ enum CalloutPlanner {
             if !note.isEmpty {
                 text += ". \(note)"
             }
-            return PaceNote(coordinate: item.coordinate, text: text)
+            return PaceNote(
+                coordinate: item.coordinate,
+                text: text,
+                bearing: item.feature.bearing
+            )
         }
     }
 
@@ -185,7 +189,11 @@ enum CalloutPlanner {
             let trimmed = line.text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else { continue }
             notes.append(
-                PaceNote(coordinate: ordered[line.index].coordinate, text: trimmed)
+                PaceNote(
+                    coordinate: ordered[line.index].coordinate,
+                    text: trimmed,
+                    bearing: ordered[line.index].feature.bearing
+                )
             )
         }
         guard !notes.isEmpty else { throw PlannerError.badResponse }
