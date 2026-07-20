@@ -36,6 +36,11 @@ targets:
     info:
       path: RallyBuddy/Info.plist
       properties:
+        # Wire the bundle version to the build settings — without these,
+        # XcodeGen hardcodes CFBundleShortVersionString=1.0 / CFBundleVersion=1
+        # and MARKETING_VERSION / CURRENT_PROJECT_VERSION never reach the app.
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         UILaunchScreen: {}
         ITSAppUsesNonExemptEncryption: false
         NSLocationWhenInUseUsageDescription: >-
