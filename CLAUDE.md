@@ -113,20 +113,28 @@ xcodebuild -exportArchive -archivePath build/RallyBuddy.xcarchive \
   -authenticationKeyIssuerID 467cad01-fed5-45da-9b77-2826c8a2c588
 ```
 
-`manageAppVersionAndBuildNumber` in ExportOptions.plist auto-bumps the build
-number on upload, so repeat uploads need no project edits.
+`manageAppVersionAndBuildNumber` is **false** in ExportOptions.plist — we
+manage both numbers ourselves so the marketing version reaches TestFlight.
+(It was `true` through build 12, which silently normalized every build's
+marketing version to "1.0"; builds 1–12 all show as "1.0 (N)" in TestFlight.
+Fixed 2026-07-20 — build 13 onward carries the real MARKETING_VERSION.)
 
-**Versioning is semver** on MARKETING_VERSION, tagged `vX.Y.Z` in git:
-- Bump with `scripts/bump-version.sh major|minor|patch` (edits project.yml,
-  regenerates the Xcode project, commits "Release vX.Y.Z", tags). Then
+**Versioning is semver** on MARKETING_VERSION, with a monotonically
+increasing CURRENT_PROJECT_VERSION (build number), tagged `vX.Y.Z` in git:
+- Bump with `scripts/bump-version.sh major|minor|patch` — edits project.yml
+  (MARKETING_VERSION per the part, CURRENT_PROJECT_VERSION +1), regenerates
+  the Xcode project, commits "Release vX.Y.Z (build N)", tags. Then
   `git push && git push --tags` and archive/upload as above.
+- The build number must be unique and increasing since Apple no longer
+  assigns it; the script owns that. A re-upload of the *same* marketing
+  version still needs a build-number bump — run the script (or hand-edit
+  CURRENT_PROJECT_VERSION) before re-archiving, or the upload is rejected.
 - Pre-1.0 policy: **minor** = new features, **patch** = fixes/tuning.
-  1.0.0 = App Store release. Build numbers are a separate axis, assigned
-  at upload — never encode meaning in them.
+  1.0.0 = App Store release.
 - Note: a new MARKETING_VERSION starts a new TestFlight version train, so
   the first build of each version re-runs external beta review for the
   public-link group (internal testers are unaffected).
-- The running version shows in the app: Offline tab → About.
+- The running version shows in the app: Offline tab → About (now accurate).
 
 ## Architecture
 
