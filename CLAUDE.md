@@ -119,6 +119,13 @@ manage both numbers ourselves so the marketing version reaches TestFlight.
 marketing version to "1.0"; builds 1–12 all show as "1.0 (N)" in TestFlight.
 Fixed 2026-07-20 — build 13 onward carries the real MARKETING_VERSION.)
 
+**Version re-baselined to 1.0.x (2026-07-20):** because builds 1–12 were
+already published to TestFlight as "1.0", a lower marketing version reads as
+a downgrade — iOS/TestFlight will not offer it as an update and shows 1.0 as
+newer. Build 13's 0.7.1 was therefore invisible on-device. The version can
+only move forward from 1.0, so the semver is anchored at 1.0.x now (the
+pre-1.0 scheme is retired). 1.0.1 (build 14) is the first correct build.
+
 **Versioning is semver** on MARKETING_VERSION, with a monotonically
 increasing CURRENT_PROJECT_VERSION (build number), tagged `vX.Y.Z` in git:
 - Bump with `scripts/bump-version.sh major|minor|patch` — edits project.yml
@@ -129,8 +136,8 @@ increasing CURRENT_PROJECT_VERSION (build number), tagged `vX.Y.Z` in git:
   assigns it; the script owns that. A re-upload of the *same* marketing
   version still needs a build-number bump — run the script (or hand-edit
   CURRENT_PROJECT_VERSION) before re-archiving, or the upload is rejected.
-- Pre-1.0 policy: **minor** = new features, **patch** = fixes/tuning.
-  1.0.0 = App Store release.
+- Policy: **minor** = new features, **patch** = fixes/tuning. Anchored at
+  1.0.x (see re-baseline note above); the version must only ever increase.
 - Note: a new MARKETING_VERSION starts a new TestFlight version train, so
   the first build of each version re-runs external beta review for the
   public-link group (internal testers are unaffected).
