@@ -38,6 +38,12 @@ final class AppServices {
 
     var isDriving: Bool { locationService.isTracking }
 
+    /// All marked features (for the CarPlay map, which shows them whether or
+    /// not a drive is active).
+    func currentFeatures() -> [RoadFeature] {
+        (try? container.mainContext.fetch(FetchDescriptor<RoadFeature>())) ?? []
+    }
+
     func startDrive() {
         activeFeatures =
             (try? container.mainContext.fetch(FetchDescriptor<RoadFeature>())) ?? []

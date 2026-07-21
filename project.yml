@@ -21,7 +21,7 @@ targets:
     entitlements:
       path: RallyBuddy/RallyBuddy.entitlements
       properties:
-        com.apple.developer.carplay-driving-task: true
+        com.apple.developer.carplay-maps: true
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "1"

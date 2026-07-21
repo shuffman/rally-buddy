@@ -23,24 +23,26 @@ out what's ahead — spoken audio plus a glanceable heads-up view.
   `guidanceInstructions`; share format v4), announcements at 500 m/120 m,
   off-route >60 m for 3 fixes → reroute to final destination (network
   required; offline shows the trail only), arrival at <45 m. Harness-
-  tested (nav-test). **CarPlay navigation plan:** with guidance shipped,
-  apply for the `carplay-maps` navigation entitlement; once granted,
-  replace the driving-task template UI with CPMapTemplate + a MapLibre
-  map drawn in the CarPlay window, navigation session maneuvers, and
-  CPNavigationAlert feature callouts.
+  tested (nav-test).
 - **Delivery:** audio callouts + visual heads-up view + CarPlay.
-  CarPlay (granted 2026-07-15, **driving-task** entitlement): tab bar via
-  `CarPlaySceneDelegate` — "Ahead" (top 3 upcoming + speed + drive
-  toggle) and "Mark" (grid of 5 one-tap quick-mark buttons). No custom
-  map on the car screen unless we later get the navigation entitlement —
-  which requires building real turn-by-turn route guidance first (we
-  already store MKDirections step locations per route; the planned
-  stepping stone).
-  `AppServices` (singleton) owns location→alert wiring so both UIs share
-  one engine. The entitlement is a "managed capability": it must be
-  ticked on the App ID under Additional Capabilities (portal UI only,
-  not API), and doing so invalidates provisioning profiles — recreate
-  the App Store profile via the ASC API afterwards.
+  CarPlay: **navigation entitlement** `com.apple.developer.carplay-maps`
+  (granted 2026-07-20, superseding the earlier `carplay-driving-task`).
+  `CarPlaySceneDelegate` uses the navigation scene (`didConnect:to window:`)
+  — `CarPlayMapViewController` draws the MapLibre map (route line + feature
+  markers, reusing `MapLibreView.Coordinator.markerImage`) in the CPWindow,
+  overlaid with a `CPMapTemplate`: recenter map button, Start/End Drive and
+  Mark bar buttons (Mark pushes a `CPGridTemplate` of the 5 quick-marks),
+  and a `CPNavigationSession` fed maneuvers from `NavigationEngine`
+  (instruction + distance-to-maneuver) when a route is active. Feature
+  callouts stay audio (through the car speakers) and are visible as map
+  markers. `AppServices` (singleton) owns location→alert/nav wiring so
+  phone and car share one engine.
+  The entitlement is a "managed capability": it must be ticked on the App ID
+  under Additional Capabilities (portal UI only, not API), and doing so
+  invalidates provisioning profiles — recreate the App Store profile via the
+  ASC API afterwards (the project entitlement is now `carplay-maps`, so the
+  profile must carry it or device signing fails). Not device-tested yet —
+  the CarPlay map/nav flow needs a real head unit or the CarPlay simulator.
 - **Loop generation** (2026-07-19): given a start + target distance,
   `RouteGenerator` proposes up to 3 loop drives — Overpass fetches
   mid-class paved roads + traffic signals around the start, ways are
