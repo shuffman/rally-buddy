@@ -17,6 +17,8 @@ final class CarPlayMapViewController: UIViewController, @preconcurrency MLNMapVi
     private var shownRoute: [[Double]] = []
     private var shownFeatureIDs: [String] = []
     private var featureAnnotations: [CarPlayMarkerAnnotation] = []
+    private var hasCentered = false
+    private var lastDriving = false
 
     private var theme: MapTheme {
         MapTheme(rawValue: UserDefaults.standard.string(forKey: "mapTheme") ?? "") ?? .standard
@@ -24,32 +26,73 @@ final class CarPlayMapViewController: UIViewController, @preconcurrency MLNMapVi
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        // Deliver position even when not driving so the map can center on the
+        // user; balanced by teardown() when the CarPlay scene disconnects.
+        services.locationService.startStandby()
+
         let map = MLNMapView(frame: view.bounds, styleURL: theme.styleURL)
         map.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         map.delegate = self
         map.showsUserLocation = true
         map.allowsRotating = true
-        map.setUserTrackingMode(.followWithHeading, animated: false, completionHandler: nil)
         view.addSubview(map)
         mapView = map
+
+        // Center immediately on any cached fix so it never opens on the
+        // style's default center (the middle of the ocean).
+        centerOnUser(animated: false)
     }
 
     func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
         shownRoute = []
         shownFeatureIDs = []
         featureAnnotations = []
+        centerOnUser(animated: false)
+        engageTracking()
         refresh()
+    }
+
+    /// Stop standby location when the CarPlay scene disconnects.
+    func teardown() {
+        services.locationService.stopStandby()
     }
 
     /// Re-center on the driver (map button action).
     func recenter() {
+        hasCentered = true
+        engageTracking()
+    }
+
+    /// Center once on the user's best-known location, then let the tracking
+    /// mode keep it centered. Retried each refresh tick until a fix exists.
+    private func centerOnUser(animated: Bool) {
+        guard !hasCentered, let map = mapView,
+            let location = services.locationService.lastKnownLocation
+        else { return }
+        hasCentered = true
+        map.setCenter(location.coordinate, zoomLevel: 14, animated: animated)
+    }
+
+    private func engageTracking() {
         let mode: MLNUserTrackingMode = services.isDriving ? .followWithHeading : .follow
-        mapView.setUserTrackingMode(mode, animated: true, completionHandler: nil)
+        mapView?.setUserTrackingMode(mode, animated: true, completionHandler: nil)
     }
 
     /// Redraw the route and feature markers if they've changed. Cheap to
     /// call every refresh tick — it diffs before touching the map.
     func refresh() {
+        // Center as soon as a fix is available (standby may not have one at
+        // the instant the scene connects).
+        if !hasCentered {
+            centerOnUser(animated: true)
+            if hasCentered { engageTracking() }
+        }
+        // Re-engage heading-up follow when a drive starts / plain follow when
+        // it ends, so the camera mode matches the drive state.
+        if services.isDriving != lastDriving {
+            lastDriving = services.isDriving
+            engageTracking()
+        }
         guard let style = mapView.style else { return }
         updateRoute(on: style)
         updateFeatures()

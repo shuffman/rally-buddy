@@ -9,6 +9,16 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     private(set) var authorization: CLAuthorizationStatus = .notDetermined
     private(set) var isTracking = false
 
+    /// Number of active standby requesters (e.g. the CarPlay map showing
+    /// position without a drive). Standby delivers fixes but does not set
+    /// isTracking, so `isDriving` stays false and no callouts fire.
+    @ObservationIgnored private var standbyCount = 0
+
+    /// Best location available right now, including the location manager's
+    /// cached fix — populated before our first delegate callback, so the map
+    /// can center immediately instead of at the style's default.
+    var lastKnownLocation: CLLocation? { location ?? manager.location }
+
     /// Called on every location fix, independent of any UI being visible.
     @ObservationIgnored var onLocationUpdate: ((CLLocation) -> Void)?
 
@@ -38,9 +48,29 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     }
 
     func stopTracking() {
-        manager.stopUpdatingLocation()
         manager.allowsBackgroundLocationUpdates = false
         isTracking = false
+        // Keep updates running if something still wants standby position.
+        if standbyCount == 0 {
+            manager.stopUpdatingLocation()
+        }
+    }
+
+    /// Start delivering fixes for showing position without a drive. Balanced
+    /// by `stopStandby()`; does not enable background updates or isTracking.
+    func startStandby() {
+        standbyCount += 1
+        requestPermission()
+        if !isTracking {
+            manager.startUpdatingLocation()
+        }
+    }
+
+    func stopStandby() {
+        standbyCount = max(0, standbyCount - 1)
+        if standbyCount == 0, !isTracking {
+            manager.stopUpdatingLocation()
+        }
     }
 
     // MARK: - CLLocationManagerDelegate

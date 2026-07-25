@@ -53,6 +53,7 @@ final class CarPlaySceneDelegate: UIResponder, @preconcurrency CPTemplateApplica
         navigationSession = nil
         currentManeuver = nil
         mapTemplate = nil
+        mapController?.teardown()
         mapController = nil
         self.interfaceController = nil
     }
