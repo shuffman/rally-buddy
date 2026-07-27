@@ -32,15 +32,18 @@ final class CarPlaySceneDelegate: UIResponder, @preconcurrency CPTemplateApplica
         mapController = mapVC
 
         let template = CPMapTemplate()
-        template.mapButtons = [recenterButton()]
+        template.mapButtons = [zoomInButton(), zoomOutButton(), recenterButton()]
         template.trailingNavigationBarButtons = [driveButton()]
         template.leadingNavigationBarButtons = [markButton()]
         interfaceController.setRootTemplate(template, animated: true, completion: nil)
         mapTemplate = template
 
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+        // .common mode so the tick keeps firing during CarPlay interactions.
+        let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.refresh() }
         }
+        RunLoop.main.add(timer, forMode: .common)
+        refreshTimer = timer
     }
 
     func templateApplicationScene(
@@ -148,6 +151,22 @@ final class CarPlaySceneDelegate: UIResponder, @preconcurrency CPTemplateApplica
             MainActor.assumeIsolated { self?.mapController?.recenter() }
         }
         button.image = UIImage(systemName: "location.fill")
+        return button
+    }
+
+    private func zoomInButton() -> CPMapButton {
+        let button = CPMapButton { [weak self] _ in
+            MainActor.assumeIsolated { self?.mapController?.zoomIn() }
+        }
+        button.image = UIImage(systemName: "plus.magnifyingglass")
+        return button
+    }
+
+    private func zoomOutButton() -> CPMapButton {
+        let button = CPMapButton { [weak self] _ in
+            MainActor.assumeIsolated { self?.mapController?.zoomOut() }
+        }
+        button.image = UIImage(systemName: "minus.magnifyingglass")
         return button
     }
 
