@@ -56,6 +56,9 @@ targets:
             CPTemplateApplicationSceneSessionRoleApplication:
               - UISceneConfigurationName: CarPlay
                 UISceneDelegateClassName: RallyBuddy.CarPlaySceneDelegate
+            CPTemplateApplicationDashboardSceneSessionRoleApplication:
+              - UISceneConfigurationName: CarPlay Dashboard
+                UISceneDelegateClassName: RallyBuddy.CarPlayDashboardSceneDelegate
         LSSupportsOpeningDocumentsInPlace: false
         CFBundleDocumentTypes:
           - CFBundleTypeName: Rally Buddy Route

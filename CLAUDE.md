@@ -37,6 +37,15 @@ out what's ahead — spoken audio plus a glanceable heads-up view.
   callouts stay audio (through the car speakers) and are visible as map
   markers. `AppServices` (singleton) owns location→alert/nav wiring so
   phone and car share one engine.
+  The **CarPlay Dashboard** (split-screen widgets home) also shows the map:
+  `CarPlayDashboardSceneDelegate` (scene role
+  `CPTemplateApplicationDashboardSceneSessionRoleApplication`) reuses
+  `CarPlayMapViewController` with two `CPDashboardButton`s (drive toggle +
+  recenter). The car map drives its own camera from `LocationService`
+  (heading-up follow, screen-center dot, zoom buttons) rather than
+  MLNMapView's user tracking, which doesn't update reliably in CarPlay
+  scenes; standby location keeps fixes flowing (with background updates) when
+  not driving.
   The entitlement is a "managed capability": it must be ticked on the App ID
   under Additional Capabilities (portal UI only, not API), and doing so
   invalidates provisioning profiles — recreate the App Store profile via the
