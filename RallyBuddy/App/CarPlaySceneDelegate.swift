@@ -179,49 +179,41 @@ final class CarPlaySceneDelegate: UIResponder, @preconcurrency CPTemplateApplica
 
     private func markButton() -> CPBarButton {
         CPBarButton(title: "Mark") { [weak self] _ in
-            MainActor.assumeIsolated { self?.presentMarkGrid() }
+            MainActor.assumeIsolated { self?.presentMarkOptions() }
         }
     }
 
     // MARK: - Marking
 
-    private func presentMarkGrid() {
+    /// Present the mark choices as a modal action sheet — the supported way
+    /// to offer a choice over a navigation map. (Pushing a CPGridTemplate onto
+    /// the map-template stack crashed on selection.) The sheet auto-dismisses
+    /// when an action is chosen.
+    private func presentMarkOptions() {
         guard let interfaceController else { return }
-        let grid = CPGridTemplate(title: "Mark Feature", gridButtons: markGridButtons())
-        interfaceController.pushTemplate(grid, animated: true, completion: nil)
+        var actions = Self.markSpecs.map { spec in
+            CPAlertAction(title: spec.title, style: .default) { _ in
+                MainActor.assumeIsolated {
+                    AppServices.shared.quickMark(type: spec.type, severity: spec.severity)
+                }
+            }
+        }
+        actions.append(CPAlertAction(title: "Cancel", style: .cancel) { _ in })
+        let sheet = CPActionSheetTemplate(title: "Mark Feature", message: nil, actions: actions)
+        interfaceController.presentTemplate(sheet, animated: true, completion: nil)
     }
 
     private struct MarkSpec {
         let title: String
         let type: RoadFeatureType
         let severity: Int
-        let chevrons: Int?
-        let symbol: String?
     }
 
     private static let markSpecs: [MarkSpec] = [
-        MarkSpec(title: "Mild", type: .tightCorner, severity: 1, chevrons: 1, symbol: nil),
-        MarkSpec(title: "Tight", type: .tightCorner, severity: 2, chevrons: 2, symbol: nil),
-        MarkSpec(title: "Hairpin", type: .tightCorner, severity: 3, chevrons: 3, symbol: nil),
-        MarkSpec(title: "Passing lane", type: .passingLane, severity: 2, chevrons: nil, symbol: "car.2"),
-        MarkSpec(title: "Residential", type: .residentialZone, severity: 2, chevrons: nil, symbol: "house.fill"),
+        MarkSpec(title: "Mild corner \u{203A}", type: .tightCorner, severity: 1),
+        MarkSpec(title: "Tight corner \u{203A}\u{203A}", type: .tightCorner, severity: 2),
+        MarkSpec(title: "Hairpin \u{203A}\u{203A}\u{203A}", type: .tightCorner, severity: 3),
+        MarkSpec(title: "Passing lane", type: .passingLane, severity: 2),
+        MarkSpec(title: "Residential zone", type: .residentialZone, severity: 2),
     ]
-
-    private func markGridButtons() -> [CPGridButton] {
-        Self.markSpecs.map { spec in
-            let image = MapLibreView.Coordinator.markerImage(
-                symbolName: spec.symbol,
-                textLabel: nil,
-                tint: UIColor(spec.type.tint),
-                explorer: false,
-                chevrons: spec.chevrons
-            )
-            return CPGridButton(titleVariants: [spec.title], image: image) { [weak self] _ in
-                MainActor.assumeIsolated {
-                    AppServices.shared.quickMark(type: spec.type, severity: spec.severity)
-                    self?.interfaceController?.popTemplate(animated: true, completion: nil)
-                }
-            }
-        }
-    }
 }

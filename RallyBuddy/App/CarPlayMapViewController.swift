@@ -20,6 +20,10 @@ final class CarPlayMapViewController: UIViewController, @preconcurrency MLNMapVi
     /// Target zoom, adjusted by the zoom buttons and applied on every camera
     /// snap (so a zoom change persists as the camera keeps following).
     private var desiredZoom: Double = 15
+    /// The user's coordinate, so the center dot can be pinned to exactly where
+    /// that point projects on screen (accounting for CarPlay safe-area insets
+    /// that shift the map's rendered center — otherwise the dot sits off-road).
+    private var lastUserCoordinate: CLLocationCoordinate2D?
 
     /// Fixed dot at the screen center marks the driver. We drive the camera
     /// from LocationService ourselves (below); MLNMapView's own user dot and
@@ -82,11 +86,33 @@ final class CarPlayMapViewController: UIViewController, @preconcurrency MLNMapVi
         guard let map = mapView,
             let location = services.locationService.lastKnownLocation
         else { return }
+        lastUserCoordinate = location.coordinate
         let direction = (services.isDriving && location.course >= 0)
             ? location.course : map.direction
         map.setCenter(
             location.coordinate, zoomLevel: desiredZoom, direction: direction, animated: animated
         )
+        positionDot()
+    }
+
+    /// Pin the driver dot to where the user's coordinate actually projects on
+    /// screen, not the geometric center. Updated continuously as the map moves
+    /// (see the region delegate callbacks below) so it stays glued to the road.
+    private func positionDot() {
+        guard let map = mapView, let coord = lastUserCoordinate else {
+            userDot.isHidden = true
+            return
+        }
+        userDot.isHidden = false
+        userDot.center = map.convert(coord, toPointTo: view)
+    }
+
+    func mapViewRegionIsChanging(_ mapView: MLNMapView) {
+        positionDot()
+    }
+
+    func mapView(_ mapView: MLNMapView, regionDidChangeAnimated animated: Bool) {
+        positionDot()
     }
 
     /// Re-center at the default zoom (recenter map button).
