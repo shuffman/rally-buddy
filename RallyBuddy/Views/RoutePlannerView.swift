@@ -111,6 +111,9 @@ struct RoutePlannerView: View {
         isPlanning = true
         let snapshot = waypoints
         planTask = Task {
+            // defer, so the cancellation paths below can't leave the
+            // "Finding roads…" spinner running forever.
+            defer { isPlanning = false }
             do {
                 let planned = try await RouteBuilder.plan(through: snapshot)
                 guard !Task.isCancelled else { return }
@@ -122,9 +125,10 @@ struct RoutePlannerView: View {
                 return
             } catch {
                 guard !Task.isCancelled else { return }
-                planningError = "No drivable road found for that leg"
+                // Report what actually went wrong — this used to claim every
+                // failure was an unroutable leg, including network errors.
+                planningError = error.localizedDescription
             }
-            isPlanning = false
         }
     }
 

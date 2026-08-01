@@ -77,6 +77,9 @@ struct MapLibreView: UIViewRepresentable {
     var fitPathOnChange: Bool = false
     /// Increment to snap the camera back to the user's location.
     var recenterToken: Int = 0
+    /// Called when MapLibre cancels course tracking because the user panned
+    /// the map. Without this the caller keeps believing the map is following.
+    var onFollowBroken: (() -> Void)?
     var onTap: ((CLLocationCoordinate2D) -> Void)?
 
     func makeCoordinator() -> Coordinator {
@@ -105,6 +108,7 @@ struct MapLibreView: UIViewRepresentable {
     func updateUIView(_ mapView: MLNMapView, context: Context) {
         let coordinator = context.coordinator
         coordinator.onTap = onTap
+        coordinator.onFollowBroken = onFollowBroken
 
         let themeChanged = coordinator.theme != theme
         if themeChanged {
@@ -113,42 +117,46 @@ struct MapLibreView: UIViewRepresentable {
             mapView.styleURL = theme.styleURL
         }
 
-        if coordinator.markers != markers || themeChanged {
-            coordinator.markers = markers
-            if !coordinator.markerAnnotations.isEmpty {
-                mapView.removeAnnotations(coordinator.markerAnnotations)
-            }
-            coordinator.markerAnnotations = markers.map { marker in
-                let annotation = MarkerAnnotation()
-                annotation.coordinate = marker.coordinate
-                let suffix = marker.suggested ? "-suggested" : ""
-                switch marker.kind {
-                case .feature(let type):
-                    let chevronKey = marker.chevrons.map { "-c\($0)" } ?? ""
-                    annotation.reuseKey =
-                        "\(theme.rawValue)-feature-\(type.rawValue)\(chevronKey)\(suffix)"
-                    annotation.tint = UIColor(type.tint)
-                    if type == .tightCorner, let chevrons = marker.chevrons {
-                        // Here be dragons: Explorer draws hairpins as one.
-                        if theme == .explorer, chevrons == 3 {
-                            annotation.symbolName = "lizard.fill"
-                        } else {
-                            annotation.chevronCount = chevrons
-                        }
-                    } else {
-                        annotation.symbolName = theme == .explorer
-                            ? type.explorerSymbol : type.systemImage
-                    }
-                case .waypoint(let number):
-                    annotation.reuseKey = "\(theme.rawValue)-waypoint-\(number)\(suffix)"
-                    annotation.tint = .systemBlue
-                    annotation.textLabel = "\(number)"
+        // Only the markers that actually changed are touched — rebuilding the
+        // whole annotation set on every change made the map flicker each time
+        // a feature was quick-marked mid-drive.
+        if coordinator.markerState != markers || themeChanged {
+            let previous = coordinator.markerState
+            coordinator.markerState = markers
+
+            var stale: [MarkerAnnotation] = []
+            var fresh: [MarkerAnnotation] = []
+
+            if themeChanged {
+                // Marker art is theme-specific, so every annotation is rebuilt.
+                stale = Array(coordinator.markerAnnotations.values)
+                coordinator.markerAnnotations = [:]
+                for marker in markers {
+                    let annotation = Self.makeAnnotation(for: marker, theme: theme)
+                    coordinator.markerAnnotations[marker.id] = annotation
+                    fresh.append(annotation)
                 }
-                annotation.isExplorer = theme == .explorer
-                annotation.isSuggestedMarker = marker.suggested
-                return annotation
+            } else {
+                let previousByID = Dictionary(
+                    previous.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first }
+                )
+                let currentByID = Dictionary(
+                    markers.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first }
+                )
+                for (id, annotation) in coordinator.markerAnnotations
+                where currentByID[id] == nil || currentByID[id] != previousByID[id] {
+                    stale.append(annotation)
+                    coordinator.markerAnnotations[id] = nil
+                }
+                for marker in markers where coordinator.markerAnnotations[marker.id] == nil {
+                    let annotation = Self.makeAnnotation(for: marker, theme: theme)
+                    coordinator.markerAnnotations[marker.id] = annotation
+                    fresh.append(annotation)
+                }
             }
-            mapView.addAnnotations(coordinator.markerAnnotations)
+
+            if !stale.isEmpty { mapView.removeAnnotations(stale) }
+            if !fresh.isEmpty { mapView.addAnnotations(fresh) }
         }
 
         let pathLatLons = pathCoordinates.map { [$0.latitude, $0.longitude] }
@@ -209,14 +217,49 @@ struct MapLibreView: UIViewRepresentable {
         }
     }
 
+    /// Builds the annotation for one marker in the current theme.
+    private static func makeAnnotation(for marker: MapMarker, theme: MapTheme) -> MarkerAnnotation {
+        let annotation = MarkerAnnotation()
+        annotation.coordinate = marker.coordinate
+        let suffix = marker.suggested ? "-suggested" : ""
+        switch marker.kind {
+        case .feature(let type):
+            let chevronKey = marker.chevrons.map { "-c\($0)" } ?? ""
+            annotation.reuseKey =
+                "\(theme.rawValue)-feature-\(type.rawValue)\(chevronKey)\(suffix)"
+            annotation.tint = UIColor(type.tint)
+            if type == .tightCorner, let chevrons = marker.chevrons {
+                // Here be dragons: Explorer draws hairpins as one.
+                if theme == .explorer, chevrons == 3 {
+                    annotation.symbolName = "lizard.fill"
+                } else {
+                    annotation.chevronCount = chevrons
+                }
+            } else {
+                annotation.symbolName = theme == .explorer
+                    ? type.explorerSymbol : type.systemImage
+            }
+        case .waypoint(let number):
+            annotation.reuseKey = "\(theme.rawValue)-waypoint-\(number)\(suffix)"
+            annotation.tint = .systemBlue
+            annotation.textLabel = "\(number)"
+        }
+        annotation.isExplorer = theme == .explorer
+        annotation.isSuggestedMarker = marker.suggested
+        return annotation
+    }
+
     // MARK: - Coordinator
 
     @MainActor
     final class Coordinator: NSObject, @preconcurrency MLNMapViewDelegate {
         var onTap: ((CLLocationCoordinate2D) -> Void)?
+        var onFollowBroken: (() -> Void)?
         var theme: MapTheme = .standard
-        var markers: [MapMarker] = []
-        var markerAnnotations: [MarkerAnnotation] = []
+        /// Last markers rendered, for diffing against the next update.
+        var markerState: [MapMarker] = []
+        /// Live annotations keyed by `MapMarker.id`.
+        var markerAnnotations: [String: MarkerAnnotation] = [:]
         var pathLatLons: [[Double]] = []
         var overlayState: [PathOverlay] = []
         var wasFollowingCourse = false
@@ -352,6 +395,20 @@ struct MapLibreView: UIViewRepresentable {
                 layer.lineDashPattern = NSExpression(forConstantValue: [0.1, 1.9])
             }
             style.addLayer(layer)
+        }
+
+        /// MapLibre silently drops tracking to `.none` when the user pans the
+        /// map. Mirror that into our own state and tell the caller, otherwise
+        /// `wasFollowingCourse` stays true, the re-apply check never fires,
+        /// and the map never follows the driver again.
+        func mapView(
+            _ mapView: MLNMapView,
+            didChange mode: MLNUserTrackingMode,
+            animated: Bool
+        ) {
+            guard mode == .none, wasFollowingCourse else { return }
+            wasFollowingCourse = false
+            onFollowBroken?()
         }
 
         func mapView(_ mapView: MLNMapView, didUpdate userLocation: MLNUserLocation?) {

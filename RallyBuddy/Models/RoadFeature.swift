@@ -77,6 +77,12 @@ final class RoadFeature {
     /// Corner severity in rally chevrons: 1 = mild, 2 = tight, 3 = hairpin.
     /// Only meaningful for .tightCorner.
     var severity: Int = 2
+    /// Stable identity that survives a SwiftData save. `persistentModelID` is
+    /// only temporary until the context saves, so anything that remembers a
+    /// feature across a save (alert suppression, map marker keys) must key on
+    /// this instead. Optional so existing stores migrate without a rewrite;
+    /// rows saved before this existed fall back to `stableID`'s composite key.
+    var uuid: UUID?
 
     init(
         type: RoadFeatureType,
@@ -94,6 +100,15 @@ final class RoadFeature {
         self.createdAt = .now
         self.isSuggested = isSuggested
         self.severity = severity
+        self.uuid = UUID()
+    }
+
+    /// Identity that is stable across saves. New features carry a `uuid`;
+    /// features stored before that property existed fall back to a composite
+    /// of values that never change after insertion.
+    var stableID: String {
+        if let uuid { return uuid.uuidString }
+        return "\(latitude),\(longitude),\(type.rawValue),\(createdAt.timeIntervalSince1970)"
     }
 
     var chevronCount: Int { min(max(severity, 1), 3) }

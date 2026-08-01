@@ -24,11 +24,15 @@ final class NavigationEngine {
     private(set) var isOffRoute = false
     private(set) var isRerouting = false
     private(set) var hasArrived = false
+    /// The path being navigated right now — the route's stored path at first,
+    /// then the recalculated one after a reroute. The drive map draws this
+    /// rather than `Route.path` so the line always matches the spoken guidance.
+    /// Empty when not navigating.
+    private(set) var activePath: [CLLocationCoordinate2D] = []
 
     /// Speech output, injected by AppServices (and a test hook).
     @ObservationIgnored var announce: (String) -> Void = { _ in }
 
-    private var path: [CLLocationCoordinate2D] = []
     private var cumulative: [Double] = []
     private var steps: [ActiveStep] = []
     private var stepCursor = 0
@@ -53,7 +57,7 @@ final class NavigationEngine {
             steps: route.guidanceSteps,
             destination: route.waypoints.last ?? route.path.last
         )
-        guard path.count >= 2 else { return }
+        guard activePath.count >= 2 else { return }
         isNavigating = true
         hasArrived = false
         if steps.isEmpty {
@@ -72,7 +76,7 @@ final class NavigationEngine {
         nextInstruction = nil
         nextManeuverDistance = nil
         remainingDistance = nil
-        path = []
+        activePath = []
         steps = []
     }
 
@@ -81,13 +85,13 @@ final class NavigationEngine {
         steps newSteps: [RouteBuilder.GuidanceStep],
         destination: CLLocationCoordinate2D?
     ) {
-        path = newPath
-        cumulative = Self.cumulativeDistances(path)
+        activePath = newPath
+        cumulative = Self.cumulativeDistances(activePath)
         steps = newSteps.map {
             ActiveStep(coordinate: $0.coordinate, instruction: $0.instruction)
         }
         for i in steps.indices {
-            steps[i].pathIndex = Self.nearestIndex(on: path, to: steps[i].coordinate)
+            steps[i].pathIndex = Self.nearestIndex(on: activePath, to: steps[i].coordinate)
         }
         steps.sort { $0.pathIndex < $1.pathIndex }
         stepCursor = 0
@@ -99,10 +103,12 @@ final class NavigationEngine {
     // MARK: - Per-fix update
 
     func update(location: CLLocation) {
-        guard isNavigating, !isRerouting, path.count >= 2 else { return }
+        guard isNavigating, !isRerouting, activePath.count >= 2 else { return }
 
-        progressIndex = Self.advance(on: path, from: progressIndex, toward: location.coordinate)
-        let nearest = path[progressIndex]
+        progressIndex = Self.advance(
+            on: activePath, from: progressIndex, toward: location.coordinate
+        )
+        let nearest = activePath[progressIndex]
         let crossTrack = location.distance(
             from: CLLocation(latitude: nearest.latitude, longitude: nearest.longitude)
         )
@@ -113,9 +119,14 @@ final class NavigationEngine {
             let toDestination = location.distance(
                 from: CLLocation(latitude: destination.latitude, longitude: destination.longitude)
             )
-            if toDestination < Self.arrivalRadius
-                || (progressIndex >= path.count - 2 && crossTrack < Self.offRouteTolerance)
-            {
+            // The end-of-path branch requires actual progress: on a two-point
+            // path `progressIndex >= count - 2` is true from the very first
+            // fix, which announced arrival before the drive started.
+            let atEndOfPath =
+                progressIndex > 0
+                && progressIndex >= activePath.count - 2
+                && crossTrack < Self.offRouteTolerance
+            if toDestination < Self.arrivalRadius || atEndOfPath {
                 announce("You have arrived")
                 hasArrived = true
                 stop()

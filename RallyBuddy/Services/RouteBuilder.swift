@@ -5,6 +5,17 @@ import MapKit
 /// Turns a sequence of tapped waypoints into a road-snapped path using
 /// MKDirections, one leg per waypoint pair.
 enum RouteBuilder {
+    enum PlanningError: LocalizedError {
+        /// MKDirections found no drivable road between two waypoints. Skipping
+        /// the leg would stitch a gap into the path and under-report the
+        /// distance without telling anyone, so this is surfaced instead.
+        case noDrivableRoad
+
+        var errorDescription: String? {
+            "No drivable road found for that leg"
+        }
+    }
+
     struct GuidanceStep {
         let coordinate: CLLocationCoordinate2D
         let instruction: String
@@ -77,7 +88,9 @@ enum RouteBuilder {
             if let cached = legCache?.leg(start, end) {
                 leg = cached
             } else {
-                guard let fetched = try await fetchLeg(from: start, to: end) else { continue }
+                guard let fetched = try await fetchLeg(from: start, to: end) else {
+                    throw PlanningError.noDrivableRoad
+                }
                 leg = fetched
                 legCache?.store(leg, start, end)
                 if interLegDelay > .zero {
@@ -103,8 +116,8 @@ enum RouteBuilder {
 
     /// One MKDirections request. Retries once after 5 s on throttling, then
     /// rethrows so the caller can drop just this route. Returns nil when no
-    /// drivable road connects the pair (matching the old skip-the-leg
-    /// behavior).
+    /// drivable road connects the pair; `plan(through:)` turns that into a
+    /// `PlanningError.noDrivableRoad`.
     private static func fetchLeg(
         from start: CLLocationCoordinate2D, to end: CLLocationCoordinate2D
     ) async throws -> PlannedLeg? {

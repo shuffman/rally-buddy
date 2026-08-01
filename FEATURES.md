@@ -41,6 +41,7 @@ This document details a list of useful, reasonable, and highly beneficial featur
 ## 2. Advanced Navigation & Routing
 
 ### Off-Route Detection & Recalculation
+* **Status: ✅ shipped v0.6.0 (2026-07-16)** — implemented in `NavigationEngine` rather than AlertEngine: cross-track distance over 60 m for 3 consecutive fixes announces "Rerouting" and recalculates automatically to the final destination (no one-tap button; rerouting needs a data connection).
 * **Description**: Implement a check while driving a selected route to detect if the vehicle has panned off-track.
 * **UI/UX Details**:
   * If the distance to the closest point on the planned route exceeds a threshold (e.g. 100 meters), display an "Off Route" badge on the HUD.
@@ -50,6 +51,7 @@ This document details a list of useful, reasonable, and highly beneficial featur
   * [DriveView.swift](file:///Users/shuffman/Projects/rally-buddy/RallyBuddy/Views/DriveView.swift)
 
 ### Maneuver Turn Warnings
+* **Status: ✅ shipped v0.6.0 (2026-07-16)** — `NavigationEngine` speaks MKDirections step instructions stored per route (`guidanceCoords` / `guidanceInstructions`) at 500 m and 120 m, layered over the normal feature callouts. Routes planned before v0.6.0 carry no instructions and need one replan to upgrade.
 * **Description**: Incorporate directions callouts (e.g. "Left turn in 300 meters") directly into the co-driver voice queue alongside the custom-marked features.
 * **UI/UX Details**:
   * Since [Route](file:///Users/shuffman/Projects/rally-buddy/RallyBuddy/Models/Route.swift) already stores step boundaries in `maneuverCoords`, the app can read these coordinate markers and feed them to [AlertEngine](file:///Users/shuffman/Projects/rally-buddy/RallyBuddy/Services/AlertEngine.swift) during navigation.
@@ -62,6 +64,7 @@ This document details a list of useful, reasonable, and highly beneficial featur
 ## 3. CarPlay & Audio Integrations
 
 ### CarPlay Dashboard
+* **Status: ✅ shipped v1.0.2–v1.0.6 (2026-07-20 onward)** — under the `com.apple.developer.carplay-maps` navigation entitlement, which allows the actual map on the car screen (`CarPlayMapViewController` + `CPMapTemplate`), a `CPNavigationSession` maneuver panel, an action-sheet Mark menu, and the split-screen Dashboard scene (`CarPlayDashboardSceneDelegate`). Callouts still duck rather than pause background audio. **Not yet tested on real hardware.**
 * **Description**: Build a dedicated CarPlay interface so that Rally Buddy can run on vehicle infotainment screens.
 * **UI/UX Details**:
   * Implement CarPlay templates to show the co-driver map, upcoming warnings banner, current speed pill, and quick-action buttons on the dashboard.

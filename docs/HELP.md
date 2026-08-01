@@ -26,9 +26,10 @@ builds ship.
 
 - **Allow location access** when asked — Rally Buddy can't do anything
   without it. "While Using the App" is sufficient.
-- The main screen is a map centered on you. There are three tabs:
-  **Drive** (the map you'll use in the car), **Routes** (plan and share
-  routes), and **Features** (everything you've marked, as a list).
+- The main screen is a map centered on you. There are four tabs:
+  **Drive** (the map you'll use in the car), **Routes** (plan, generate and
+  share routes), **Features** (everything you've marked, as a list), and
+  **Offline** (download map areas for driving without signal).
 
 ## Marking road features
 
@@ -55,21 +56,26 @@ Corners are graded in **rally chevrons**, like the roadside boards:
 The marker on the map shows the chevron count (on the Explorer's Map, a
 hairpin is marked with a dragon).
 
-The **"Only for current direction of travel"** toggle makes a feature fire
-only when you're heading the way you are now — useful for a passing lane
-that only exists on one side of the road.
+Features marked this way fire in **both** directions of travel — a point you
+tapped on the map isn't somewhere you were heading, so there's no direction
+to record. To mark a one-way-only feature (a passing lane that exists on just
+one side of the road), mark it while driving it: quick-marks record your
+direction automatically.
 
 **While driving — one tap.** During a drive, the bottom of the screen has
 **Pass** and **Homes** buttons plus a row of three corner buttons —
 **› Mild**, **›› Tight**, **››› Hairpin**. Tap one as you pass the spot;
 the feature is dropped at your current location and direction, confirmed
-with a buzz and a spoken "Marked". No looking at the screen needed.
+with a buzz and a spoken "Marked". No looking at the screen needed. Features
+you mark yourself are never read back to you.
 
 ## Driving
 
 1. On the **Drive** tab, tap **Start Drive**.
 2. The map follows you heading-up, your speed shows at the bottom left,
-   and the tab bar disappears — the whole screen is for driving.
+   and the tab bar disappears — the whole screen is for driving. If you drag
+   the map (to look ahead, say), following stops and a **Recenter** button
+   appears next to the speed — tap it to snap back to your position.
 3. When a marked feature is ahead of you (within about 600 m and roughly
    in your direction of travel), Rally Buddy speaks it — "Tight corner in
    450 meters" — and shows a banner at the top with a live distance.
@@ -112,9 +118,9 @@ banner with the next turn and distance-to-go, plus all the usual feature
 callouts layered on top.
 
 - **Off route?** After a few seconds it says "Rerouting" and calculates
-  a fresh path to your destination. Rerouting needs a data connection —
-  with no signal you'll still see the original trail on the map to find
-  your way back.
+  a fresh path to your destination; the line on the map redraws to match
+  the new directions. Rerouting needs a data connection — with no signal
+  you'll still see the original trail on the map to find your way back.
 - **Older routes** (planned before this version) have no stored
   instructions — you'll get the route line and off-route warnings, but
   no spoken turns. Replan the route once to upgrade it.
@@ -179,20 +185,31 @@ so importing twice won't create duplicates.
 
 ## CarPlay
 
-Plug in (or connect wirelessly) and Rally Buddy appears on your car's
-screen with two tabs:
+Plug in (or connect wirelessly) and Rally Buddy takes over the car
+screen with the full map — the same map as the phone, drawn on the
+dash.
 
-- **Ahead** — the next few features coming up, each with its chevron
-  grade and a live countdown distance, plus your speed and a **Start
-  Drive / End Drive** button. Run whole drives without touching the
-  phone.
-- **Mark** — five big buttons (› ›› ››› corners, passing lane,
-  residential) that drop a feature at your current spot, confirmed out
-  loud. Marking from the car screen, eyes mostly on the road.
+- **The map** follows you heading-up with your car centered, your route
+  drawn ahead of you and every marked feature shown as a marker. Buttons
+  on the map zoom in, zoom out, and recenter if you've panned away.
+- **Start Drive / End Drive** sits in the top-right corner, so you can
+  run a whole drive without touching the phone.
+- **Mark** is top-left: tap it and a list slides up with five choices
+  (› ›› ››› corners, passing lane, residential). Pick one and the
+  feature drops at your current spot, confirmed out loud.
+- **Turn-by-turn** — when you're driving a planned route, the car shows
+  the usual navigation panel with the next instruction and the distance
+  to it, alongside the map.
 
-Spoken callouts come through the car speakers. Apple's rules for this
-app category allow cards and buttons but not maps on the car screen —
-for the map, glance at the phone in its mount.
+Spoken feature callouts come through the car speakers as usual.
+
+**On the CarPlay Dashboard** (the split-screen home screen with the
+widgets), Rally Buddy shows the same map with two shortcut buttons —
+the drive toggle and recenter — so you can keep an eye on what's ahead
+while another app has the main screen.
+
+> CarPlay hasn't been tested in a real car yet — if something looks
+> wrong on your head unit, that's worth reporting.
 
 ## Map styles
 

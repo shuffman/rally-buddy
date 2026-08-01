@@ -43,8 +43,11 @@ Native SwiftUI iOS app. All data stays on your device.
 - **Feature auto-detection** — scan a route to suggest tight corners
   (pure geometry), residential zones and passing lanes (OpenStreetMap
   tags); suggestions are confirmable, deletable, and deduped
-- **CarPlay** — glanceable card on the car screen: next feature with
-  chevron grade, live distance, speed, and a drive start/stop button
+- **CarPlay** — the full map on the car screen: heading-up follow
+  camera, route line and feature markers, zoom/recenter controls,
+  start/end drive and one-tap marking, and a turn-by-turn maneuver
+  panel while navigating; the same map runs in the split-screen
+  CarPlay Dashboard
 
 Planned: live peer-to-peer nearby sync, GPX/KML import and export.
 

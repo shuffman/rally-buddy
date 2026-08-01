@@ -1,128 +1,153 @@
-# Rally Buddy Code Review
+# Rally Buddy Code Review — 2026-07-31
 
-This document contains a comprehensive code review of the Rally Buddy codebase. It identifies functional bugs, logical inconsistencies, performance concerns, and SwiftUI/Swift Concurrency best-practice violations.
+Full read of `Models/`, `Services/`, `Views/`, and `App/` at v1.0.6 (build 19).
+**Every finding below has been fixed**; this file is the record of what was
+wrong and how it was addressed. Verified by a clean build — the only remaining
+warnings are two pre-existing `@preconcurrency` notices on the CarPlay scene
+delegates, untouched.
 
----
-
-## 1. Critical Bugs & Functional Issues
-
-### Audio Session Ducking is Never Restored (Permanent Background Audio Muting)
-* **File & Lines**: [SpeechService.swift](file:///Users/shuffman/Projects/rally-buddy/RallyBuddy/Services/SpeechService.swift#L8-L18)
-* **Issue**: The co-driver speech service configures the `AVAudioSession` category with the option `.duckOthers`. When [say(_:)](file:///Users/shuffman/Projects/rally-buddy/RallyBuddy/Services/SpeechService.swift#L15) is invoked, it sets the audio session to active:
-  ```swift
-  try? AVAudioSession.sharedInstance().setActive(true)
-  ```
-  However, it **never deactivates** the session when speech completes.
-* **Consequence**: After the first callout is spoken (or when a feature is marked), background audio (such as music or podcasts from Spotify/Apple Podcasts) will remain ducked (attenuated) **permanently** until the app is force-closed or another app reclaims audio focus.
-* **Fix**: Conform the [SpeechService](file:///Users/shuffman/Projects/rally-buddy/RallyBuddy/Services/SpeechService.swift) to `AVSpeechSynthesizerDelegate`. Set the synthesizer's delegate to `self`, and in the delegate callbacks `speechSynthesizer(_:didFinish:)` and `speechSynthesizer(_:didCancel:)`, deactivate the audio session:
-  ```swift
-  try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-  ```
-
-### User Tracking Mode Desynchronization (Map Stops Following)
-* **File & Lines**: [MapLibreView.swift](file:///Users/shuffman/Projects/rally-buddy/RallyBuddy/Views/MapLibreView.swift#L148-L155)
-* **Issue**: [updateUIView(_:context:)](file:///Users/shuffman/Projects/rally-buddy/RallyBuddy/Views/MapLibreView.swift#L81) sets the map's user tracking mode based on `followsCourse`:
-  ```swift
-  if followsCourse != coordinator.wasFollowingCourse {
-      coordinator.wasFollowingCourse = followsCourse
-      mapView.setUserTrackingMode(
-          followsCourse ? .followWithCourse : .none,
-          animated: true,
-          completionHandler: nil
-      )
-  }
-  ```
-  In MapLibre, whenever the user manually pans or drags the map, the tracking mode automatically reverts to `.none`. However, `MapLibreView` does not implement the delegate method `mapView(_:didChangeUserTrackingMode:animated:)` or update the state.
-* **Consequence**: If the user pans the map, tracking is cancelled internally by MapLibre, but `followsCourse` (bound to `locationService.isTracking`) remains `true` in SwiftUI. Because the values remain `true` in both places, future re-renders will not trigger the `if followsCourse != coordinator.wasFollowingCourse` condition, and the map will **never snap back** to following the user.
-* **Fix**: Change `followsCourse` to a `Binding<Bool>` and implement `mapView(_:didChangeUserTrackingMode:animated:)` in the [Coordinator](file:///Users/shuffman/Projects/rally-buddy/RallyBuddy/Views/MapLibreView.swift#L168) to update that binding to `false` when the tracking mode changes to `.none` via manual gesture.
-
-### Route Planner Spinner Stuck on Cancellation
-* **File & Lines**: [RoutePlannerView.swift](file:///Users/shuffman/Projects/rally-buddy/RallyBuddy/Views/RoutePlannerView.swift#L112-L126)
-* **Issue**: The route replanning task sets `isPlanning = true` and kicks off an asynchronous path-finding operation. If a user quickly makes a new tap or performs an undo, the previous task is cancelled:
-  ```swift
-  planTask = Task {
-      do {
-          let planned = try await RouteBuilder.plan(through: snapshot)
-          guard !Task.isCancelled else { return } // <-- Returns without resetting isPlanning
-          ...
-      } catch is CancellationError {
-          return // <-- Returns without resetting isPlanning
-      } catch {
-          ...
-      }
-      isPlanning = false
-  }
-  ```
-* **Consequence**: When the task returns early on cancellation, `isPlanning = false` is bypassed. The UI status bar spinner ("Finding roads...") will spin **indefinitely** unless another task successfully finishes to clean it up.
-* **Fix**: Use a `defer` block inside the `Task` to guarantee `isPlanning = false` is called:
-  ```swift
-  planTask = Task {
-      defer { isPlanning = false }
-      do { ... }
-  }
-  ```
+Nothing here has been tested on a real drive yet. The two findings whose
+symptoms depend on runtime timing (feature suppression, off-route rerouting)
+deserve a road test or a simulated Freeway Drive before the next release.
 
 ---
 
-## 2. SwiftUI & Swift Concurrency Warnings
+## Fixed: bugs a driver would have noticed
 
-### SwiftUI Identifier Anti-Pattern (Unstable IDs in Loop)
-* **File & Lines**: [OfflineMapsTab.swift](file:///Users/shuffman/Projects/rally-buddy/RallyBuddy/Views/OfflineMapsTab.swift#L49)
-* **Issue**: The list of offline packs uses the loop array's offset as its identifier:
-  ```swift
-  ForEach(Array(offlineManager.packs.enumerated()), id: \.offset) { _, pack in
-      OfflinePackRow(pack: pack, manager: offlineManager)
-  }
-  ```
-* **Consequence**: Using array indices/offsets as identifiers in dynamic `ForEach` structures is a SwiftUI anti-pattern. If a pack is deleted, the indices shift. SwiftUI's layout and diffing engine will confuse the rows, leading to list rendering glitches, wrong item details being populated, and animation jumps.
-* **Fix**: Retrieve a stable, unique identifier from each `MLNOfflinePack` (e.g., wrap it in an `Identifiable` helper struct or use `ObjectIdentifier(pack)` if the native type is not hashable/identifiable).
+### The map stopped following you for the rest of the drive after one pan
 
-### Non-Unique MapMarker IDs when Importing/Scanning
-* **File & Lines**: [DriveView.swift](file:///Users/shuffman/Projects/rally-buddy/RallyBuddy/Views/DriveView.swift#L29)
-* **Issue**: Markers are identified by their feature's creation timestamp:
-  ```swift
-  id: "f-\(feature.createdAt.timeIntervalSince1970)"
-  ```
-  When importing a route or running the auto-detector, multiple [RoadFeature](file:///Users/shuffman/Projects/rally-buddy/RallyBuddy/Models/RoadFeature.swift) instances are inserted simultaneously in a single transaction, meaning they share the **exact same** `createdAt` timestamp.
-* **Consequence**: Multiple map markers will share duplicate IDs. In MapLibre or SwiftUI loops, this leads to unpredictable rendering glitches, missing markers, or markers jumping locations.
-* **Fix**: Use the database-backed unique identifier `feature.id.uuidString` or `feature.id.description`.
+**Was**: `MapLibreView.updateUIView` only re-applied the tracking mode when
+`followsCourse != coordinator.wasFollowingCourse`. MapLibre silently drops
+tracking to `.none` when the user pans, but both values stayed `true`, so the
+condition never fired again — and the recenter button lived in the *not
+driving* branch of `DriveView.controls`, so there was no way back mid-drive.
 
-### Non-Sendable SwiftData Model Crossings
-* **File & Lines**: [FeatureDetector.swift](file:///Users/shuffman/Projects/rally-buddy/RallyBuddy/Services/FeatureDetector.swift#L53-L58) and [RoutesTab.swift](file:///Users/shuffman/Projects/rally-buddy/RallyBuddy/Views/RoutesTab.swift#L111-L119)
-* **Issue**: The `@MainActor` function `scanAndInsert` accepts `existingFeatures: [RoadFeature]`. It then suspends execution with `await scan(...)` which runs on a cooperative background thread. Under Swift 6.0 Strict Concurrency, SwiftData model classes are not `Sendable` because they are bound to a specific `ModelContext` (and thread/actor).
-* **Consequence**: Passing an array of non-Sendable `RoadFeature` class instances across an asynchronous boundary triggers strict concurrency compiler warnings.
-* **Fix**: Only pass `Sendable` representations across boundaries (e.g. `[CLLocationCoordinate2D]` coordinates, types, or a lightweight thread-safe struct), or perform database fetches directly within the actor-isolated scope.
+**Now**: `Coordinator` implements `mapView(_:didChange:animated:)` (MapLibre's
+renamed `didChangeUserTrackingMode`), mirrors the cancellation into
+`wasFollowingCourse`, and reports it via a new `onFollowBroken` callback.
+`DriveView` owns `followsCourse` as state, synced to `isTracking` with
+`.onChange(initial: true)` so drives started from CarPlay behave the same, and
+shows a **Recenter** button beside the speed pill whenever following is off.
+
+### Music and podcasts stayed ducked forever after the first callout
+
+**Was**: `SpeechService.say(_:)` called `AVAudioSession.setActive(true)` and
+nothing ever deactivated it, so background audio stayed attenuated until the
+app was force-quit.
+
+**Now**: a stateless `SpeechDelegate` shim receives `didFinish` / `didCancel`
+and deactivates with `.notifyOthersOnDeactivation`, guarded on
+`synthesizer.isSpeaking` so back-to-back callouts don't make music stutter.
+The delegate is a separate class so `SpeechService` stays a plain Swift type —
+making it an `NSObject` itself introduced a `Sendable` warning, and a stored
+callback closure just moved that warning to the shim.
+
+### After a successful reroute the map still drew the old route
+
+**Was**: `NavigationEngine.reroute` replaced its private `path`, but the drawn
+line came from `AppServices.activeRoute?.path`, which nothing updated. The
+driver was guided along one path and shown another.
+
+**Now**: the engine's path is `private(set) var activePath`, and `DriveView`
+draws `navigationEngine.activePath` while navigating, falling back to the
+stored route otherwise. The saved `Route` is deliberately left untouched — a
+reroute shouldn't rewrite the route you planned.
+
+### Features you marked yourself could be announced back at you
+
+**Was**: `AlertEngine.announced` was a `Set<PersistentIdentifier>`. For a
+newly inserted model that identifier is *temporary* and changes when SwiftData
+autosaves, so the suppression recorded by `suppress(_:)` stopped matching and
+the corner you had just marked got read back to you — the `|| distance < 30`
+bypass meant the heading cone didn't prevent it either.
+
+**Now**: `RoadFeature` carries a `uuid` plus a `stableID` that survives saves;
+`announced`, `UpcomingFeature.id`, the drive-map marker keys, and the CarPlay
+marker keys all use it. `uuid` is optional so existing stores migrate without
+a rewrite — rows saved before it existed fall back to a composite of values
+that never change after insertion.
+
+### A leg with no drivable road was silently skipped, leaving a gap
+
+**Was**: `RouteBuilder.plan` did `guard let fetched = ... else { continue }`,
+stitching a discontinuous path with an under-reported distance and no error —
+the planner's "No drivable road" message only fired when `plan` *threw*.
+
+**Now**: a typed `RouteBuilder.PlanningError.noDrivableRoad` is thrown.
+`RoutePlannerView` surfaces `error.localizedDescription` (so network failures
+finally report themselves instead of being mislabelled as unroutable legs), and
+`RouteGenerator` already dropped candidates whose planning threw.
 
 ---
 
-## 3. Architecture & Performance Concerns
+## Fixed: latent and lower-severity
 
-### High-Flicker Marker Updates
-* **File & Lines**: [MapLibreView.swift](file:///Users/shuffman/Projects/rally-buddy/RallyBuddy/Views/MapLibreView.swift#L92-L128)
-* **Issue**: In `updateUIView`, whenever `markers` or `theme` changes, the coordinator removes **every single annotation** and adds them all back:
-  ```swift
-  if coordinator.markers != markers || themeChanged {
-      coordinator.markers = markers
-      if !coordinator.markerAnnotations.isEmpty {
-          mapView.removeAnnotations(coordinator.markerAnnotations)
-      }
-      coordinator.markerAnnotations = markers.map { ... }
-      mapView.addAnnotations(coordinator.markerAnnotations)
-  }
-  ```
-* **Consequence**: This causes massive visual flickering and micro-stutters, especially while driving or when new/suggested features are updated, since the entire map overlay has to clear and re-render.
-* **Fix**: Perform a diff between `coordinator.markers` and `markers`, and only add/remove the specific annotations that changed.
-
-### Sequentially Blocking Network Requests in Route Planning
-* **File & Lines**: [RouteBuilder.swift](file:///Users/shuffman/Projects/rally-buddy/RallyBuddy/Services/RouteBuilder.swift#L24-L40)
-* **Issue**: When snapping a route to the road layout, `RouteBuilder.plan(through:)` performs sequential `MKDirections.calculate()` requests in a loop (one leg at a time).
-* **Consequence**: MapKit directions are online-only and subject to strict API throttling. If a route has many waypoints, the planning step takes a long time and is prone to triggering rate limiting, which results in "No drivable road found for that leg" errors.
-* **Fix**: Implement an in-memory or persistent cache of calculated route legs indexed by rounded coordinates. This would bypass network requests for already-snapped segments.
+* **Every exported file claimed format version 1.** `payload()` never set
+  `version`, so files carrying v2 maneuvers, v3 severities, and v4 guidance all
+  went out stamped v1. Now stamped `SharedRoute.currentVersion`, with the
+  historical caveat documented on the type and in CLAUDE.md.
+* **Route planner spinner could hang.** Both cancellation paths skipped
+  `isPlanning = false`; now a `defer` at the top of the task.
+* **Offline manager leaked notification observers.** No `deinit`, combined with
+  `@State private var offlineManager = OfflineMapManager()` re-evaluating its
+  initializer on every view re-init. Tokens now live in a small `ObserverBag`
+  whose own `deinit` unregisters them — a separate non-isolated class because a
+  `@MainActor` type's `deinit` can't touch its isolated stored properties.
+* **Arrival fired immediately on a two-point route.** `progressIndex >= count - 2`
+  is `0 >= 0` on the first fix; the end-of-path branch now also requires
+  `progressIndex > 0`.
+* **Marker churn.** Every marker change removed and re-added the whole
+  annotation set, flickering the map on each quick-mark. Now diffed by
+  `MapMarker.id`, rebuilding wholesale only on a theme change (marker art is
+  theme-specific).
+* **Sharing a long route scanned the whole polyline per feature.** A padded
+  bounding-box reject now runs before the per-point distance check.
+* **Co-driver sheet discarded unsaved edits** when `onAppear` re-fired; guarded
+  with `hasLoadedSavedScript`.
+* **Offline pack rows keyed by array offset.** Now keyed on
+  `ObjectIdentifier(pack)` via a small `MLNOfflinePack` extension.
+* **CarPlay map ignored a live theme change.** `refresh()` now reloads the
+  style when the theme differs, and `didFinishLoading` removes existing
+  annotations rather than just forgetting them — without that, the newly
+  reachable style reload would have doubled every marker.
 
 ---
 
-## 4. Minor Style & Layout Improvements
+## One judgment call worth reviewing
 
-* **Missing Deinitializers for Notification Observers**: [OfflineMapManager.swift](file:///Users/shuffman/Projects/rally-buddy/RallyBuddy/Services/OfflineMapManager.swift#L20-L33) registers observers in `init` but never removes them. Although this is a long-lived singleton-like class, standard best practices require a `deinit` block that calls `NotificationCenter.default.removeObserver` to avoid dangling references during testing or state resets.
-* **Dead Code in AddFeatureSheet**: [AddFeatureSheet.swift](file:///Users/shuffman/Projects/rally-buddy/RallyBuddy/Views/AddFeatureSheet.swift#L40) displays the toggle "Only for current direction of travel" only if `course != nil`. However, [DriveView](file:///Users/shuffman/Projects/rally-buddy/RallyBuddy/Views/DriveView.swift#L66) passes `course: nil` in its sheet initializer. Since features are otherwise added directly/automatically via quick-mark buttons, this toggle is unreachable dead UI code.
-* **Hardcoded Metric Units**: Spans, distances, lookahead cones, and speed readouts are hardcoded to metric measurements. This limits accessibility in countries using imperial systems (miles, yards, mph). Use Foundation's `Measurement` and `MeasurementFormatter` structures to achieve native localization.
+The **"Only for current direction of travel"** toggle in `AddFeatureSheet` was
+unreachable: it renders only when `course != nil`, and the sole presenter
+passed `course: nil`. Rather than wire a course through, the toggle and its
+`course` parameter were **removed** — a point tapped on the map isn't somewhere
+the driver was heading, so there is no meaningful direction to record.
+Direction-specific marking still exists where it makes sense: quick-marks made
+while driving record the live course automatically. `docs/HELP.md` was updated
+to match.
+
+If you'd rather keep a direction control for map-tapped features, the right
+shape is the bearing wheel already proposed in FEATURES.md ("Feature Editing &
+Visual Bearing Wheel") — say the word and I'll build that instead.
+
+---
+
+## Checked and found correct
+
+* **`CalloutPlanner`'s Claude API usage.** `claude-opus-4-8` is a current model
+  ID, and the request shape — adaptive thinking plus `output_config.format`
+  with a `json_schema` — is right for it. Two optional notes, not defects:
+  `claude-opus-5` is now the recommended default at the same price, and
+  `max_tokens: 8192` is shared between thinking and output, so a
+  feature-dense route could truncate (handled gracefully with "The script was
+  cut off").
+* **"Non-unique MapMarker IDs" from the previous review was overstated.**
+  `MapMarker.id` was never used as a rendering or diffing key, so duplicates
+  changed nothing. It *is* a real key now that markers are diffed by id — which
+  is why the ids were moved to `stableID` in the same pass.
+* **RouteBuilder leg cache** — already existed and is used by the generator.
+  `RoutePlannerView` still doesn't pass one; that remains a deliberate open
+  question in CLAUDE.md, not a bug.
+* **Non-Sendable SwiftData model crossings** — still architecturally true
+  (`FeatureDetector.scanAndInsert` takes `[RoadFeature]` across an `await`),
+  but every caller is `@MainActor` and the project doesn't build under Swift 6
+  strict concurrency, so it produces no warnings today. Left alone; revisit
+  when strict concurrency is enabled.

@@ -22,28 +22,43 @@ struct DriveView: View {
 
     @State private var pendingPoint: PendingPoint?
     @State private var recenterToken = 0
+    /// Whether the map is following the driver. Starts true with a drive, but
+    /// MapLibre drops tracking as soon as the map is panned — the map reports
+    /// that back so the recenter button can appear.
+    @State private var followsCourse = false
     @AppStorage("mapTheme") private var mapThemeRaw = MapTheme.standard.rawValue
 
     private var mapTheme: MapTheme {
         MapTheme(rawValue: mapThemeRaw) ?? .standard
     }
 
+    /// While navigating, draw the path the engine is actually guiding along —
+    /// after a reroute that is no longer the route's stored path.
+    private var drawnPath: [CLLocationCoordinate2D] {
+        let navigation = services.navigationEngine
+        if navigation.isNavigating, !navigation.activePath.isEmpty {
+            return navigation.activePath
+        }
+        return activeRoute?.path ?? []
+    }
+
     var body: some View {
         MapLibreView(
             markers: features.map { feature in
                 MapMarker(
-                    id: "f-\(feature.createdAt.timeIntervalSince1970)",
+                    id: "f-\(feature.stableID)",
                     coordinate: feature.coordinate,
                     kind: .feature(feature.type),
                     suggested: feature.isSuggested,
                     chevrons: feature.type == .tightCorner ? feature.chevronCount : nil
                 )
             },
-            pathCoordinates: activeRoute?.path ?? [],
+            pathCoordinates: drawnPath,
             theme: mapTheme,
-            followsCourse: locationService.isTracking,
+            followsCourse: followsCourse,
             fitPathOnChange: true,
             recenterToken: recenterToken,
+            onFollowBroken: { followsCourse = false },
             onTap: { coordinate in
                 // Map-tap annotation is a parked-car activity; while driving,
                 // marking happens through the big buttons only.
@@ -81,8 +96,13 @@ struct DriveView: View {
             }
         }
         .onAppear { locationService.requestPermission() }
+        // Follow whenever a drive is running — including drives started from
+        // the car screen, which never touch this view's buttons.
+        .onChange(of: locationService.isTracking, initial: true) { _, tracking in
+            followsCourse = tracking
+        }
         .sheet(item: $pendingPoint) { point in
-            AddFeatureSheet(coordinate: point.coordinate, course: nil)
+            AddFeatureSheet(coordinate: point.coordinate)
                 .presentationDetents([.medium])
         }
         .toolbar(locationService.isTracking ? .hidden : .visible, for: .tabBar)
@@ -99,6 +119,23 @@ struct DriveView: View {
                         speed: locationService.location?.speed,
                         serif: mapTheme == .explorer
                     )
+                    // Panning the map cancels follow; without this the map
+                    // stayed put for the rest of the drive.
+                    if !followsCourse {
+                        Button {
+                            followsCourse = true
+                        } label: {
+                            VStack(spacing: 4) {
+                                Image(systemName: "location.fill")
+                                    .font(.title2)
+                                Text("Recenter")
+                                    .font(.caption.bold())
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 64)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.blue)
+                    }
                     QuickMarkButton(type: .passingLane) { quickMark(.passingLane) }
                     QuickMarkButton(type: .residentialZone) { quickMark(.residentialZone) }
                 }

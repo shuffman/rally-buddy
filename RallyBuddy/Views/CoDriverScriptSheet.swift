@@ -13,6 +13,9 @@ struct CoDriverScriptSheet: View {
     @State private var lines: [PaceNote] = []
     @State private var isGenerating = false
     @State private var errorMessage: String?
+    /// onAppear fires again when the sheet returns to the foreground; without
+    /// this, reloading the saved script would wipe in-progress edits.
+    @State private var hasLoadedSavedScript = false
 
     private var featureCount: Int {
         CalloutPlanner.orderedFeatures(route: route, features: features).count
@@ -88,6 +91,8 @@ struct CoDriverScriptSheet: View {
                 }
             }
             .onAppear {
+                guard !hasLoadedSavedScript else { return }
+                hasLoadedSavedScript = true
                 lines = route.paceNotes
             }
         }

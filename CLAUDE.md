@@ -30,8 +30,10 @@ out what's ahead — spoken audio plus a glanceable heads-up view.
   `CarPlaySceneDelegate` uses the navigation scene (`didConnect:to window:`)
   — `CarPlayMapViewController` draws the MapLibre map (route line + feature
   markers, reusing `MapLibreView.Coordinator.markerImage`) in the CPWindow,
-  overlaid with a `CPMapTemplate`: recenter map button, Start/End Drive and
-  Mark bar buttons (Mark pushes a `CPGridTemplate` of the 5 quick-marks),
+  overlaid with a `CPMapTemplate`: zoom in/out + recenter map buttons,
+  Start/End Drive and Mark bar buttons (Mark presents a modal
+  `CPActionSheetTemplate` of the 5 quick-marks — pushing a `CPGridTemplate`
+  onto the map-template stack crashed on selection, fixed in v1.0.6),
   and a `CPNavigationSession` fed maneuvers from `NavigationEngine`
   (instruction + distance-to-maneuver) when a route is active. Feature
   callouts stay audio (through the car speakers) and are visible as map
@@ -70,8 +72,11 @@ out what's ahead — spoken audio plus a glanceable heads-up view.
   `.rallybuddy` JSON (route + features within 200 m of the path) via
   ShareLink; the app claims the UTI `com.shuffman.rallybuddy.route` so
   receiving via AirDrop opens and imports it (features deduped within 25 m).
-  True tap-to-share (NameDrop) is not available to third-party apps;
-  MultipeerConnectivity "live nearby sync" is the planned follow-up.
+  Files stamp `version` correctly from 2026-07-31 on; everything exported
+  before that claims v1 regardless of content, so a v1 file means "inspect
+  the optional fields", not "has none". True tap-to-share (NameDrop) is not
+  available to third-party apps; MultipeerConnectivity "live nearby sync" is
+  the planned follow-up.
 - **Driver-centric main screen:** map is front and center; while driving,
   marking a feature is ONE tap on a big bottom-row button (drops it at the
   current location + course, haptic + spoken confirmation, no announcement
@@ -158,6 +163,9 @@ increasing CURRENT_PROJECT_VERSION (build number), tagged `vX.Y.Z` in git:
 
 - `Models/RoadFeature.swift` — SwiftData model. A feature is a point with a
   type, optional travel-direction bearing (nil = both directions), and note.
+  Carries its own `uuid` and a `stableID`: `persistentModelID` is only
+  temporary until the context saves, so anything remembering a feature across
+  a save (alert suppression, map marker keys) must key on `stableID`.
 - `Models/Route.swift` — SwiftData model; waypoints + road-snapped path
   stored as interleaved lat/lon `[Double]` arrays.
 - `Services/LocationService.swift` — CLLocationManager wrapper (@Observable);
@@ -226,13 +234,16 @@ increasing CURRENT_PROJECT_VERSION (build number), tagged `vX.Y.Z` in git:
   (tight), ‹150 m = 1 (mild). Grade names: Corner / Tight corner /
   Hairpin; hairpin callouts append "Slow down". Radius bands are guesses
   pending real drives.
-- **Background location UX** and CarPlay entitlement are deferred.
+- **Background location UX** is still deferred. (The CarPlay entitlement is
+  no longer open — `carplay-maps` was granted 2026-07-20; see above.)
 - **Route planner replans every leg on each waypoint tap** — fine for a
   handful of waypoints, but MKDirections throttles aggressive use;
   `RouteBuilder.LegCache` exists now (built for the generator) — pass one
   from RoutePlannerView if tap-planning ever hits the throttle.
-- **Off-route detection** while driving a route: not implemented; the route
-  is currently just drawn on the map.
+- **Off-route detection** shipped with navigation in v0.6.0
+  (`NavigationEngine`, 60 m × 3 fixes → reroute). Still untuned on real
+  drives, and rerouting needs a data connection — offline, the driver only
+  gets the original trail on the map.
 - **OpenFreeMap has no formal SLA or offline-bulk policy**; downloads are
   region-sized (tens of MB), which is polite use. If the app ever grows a
   real user base, self-host the tiles or switch to a paid tile plan.

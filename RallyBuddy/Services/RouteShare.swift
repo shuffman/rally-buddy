@@ -21,7 +21,13 @@ struct SharedRoute: Codable {
         var severity: Int? = nil
     }
 
-    var version: Int = 1
+    /// Bumped whenever a field is added. v2 added maneuvers, v3 feature
+    /// severity, v4 turn-by-turn guidance. Files written before 2026-07-31
+    /// all claim v1 regardless of content — `payload()` never set this — so
+    /// treat a v1 file as "inspect the optional fields", not "has none".
+    static let currentVersion = 4
+
+    var version: Int = currentVersion
     var name: String
     var waypoints: [Double]
     var path: [Double]
@@ -94,10 +100,35 @@ struct RouteExport: Transferable {
     }
 
     func payload() -> SharedRoute {
-        let pathLocations = Route.unpack(path).map {
+        let pathCoordinates = Route.unpack(path)
+        // Bounding-box reject first: the per-point distance scan below is
+        // O(features × path points), and a feature far from the route used to
+        // walk the entire polyline before being discarded. The box is padded
+        // by the corridor width so it can never exclude a real match.
+        let degreeLatPad = Self.corridorWidth / 110_540
+        var minLat = Double.greatestFiniteMagnitude
+        var maxLat = -Double.greatestFiniteMagnitude
+        var minLon = Double.greatestFiniteMagnitude
+        var maxLon = -Double.greatestFiniteMagnitude
+        for coordinate in pathCoordinates {
+            minLat = min(minLat, coordinate.latitude)
+            maxLat = max(maxLat, coordinate.latitude)
+            minLon = min(minLon, coordinate.longitude)
+            maxLon = max(maxLon, coordinate.longitude)
+        }
+        let midLat = (minLat + maxLat) / 2
+        let degreeLonPad =
+            Self.corridorWidth / (111_320 * max(cos(midLat * .pi / 180), 0.05))
+
+        let pathLocations = pathCoordinates.map {
             CLLocation(latitude: $0.latitude, longitude: $0.longitude)
         }
-        let nearby = candidateFeatures.filter { feature in
+        let nearby = pathCoordinates.isEmpty ? [] : candidateFeatures.filter { feature in
+            guard feature.latitude >= minLat - degreeLatPad,
+                feature.latitude <= maxLat + degreeLatPad,
+                feature.longitude >= minLon - degreeLonPad,
+                feature.longitude <= maxLon + degreeLonPad
+            else { return false }
             let location = CLLocation(
                 latitude: feature.latitude,
                 longitude: feature.longitude
@@ -107,6 +138,7 @@ struct RouteExport: Transferable {
             }
         }
         return SharedRoute(
+            version: SharedRoute.currentVersion,
             name: name,
             waypoints: waypoints,
             path: path,

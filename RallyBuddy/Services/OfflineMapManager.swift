@@ -15,7 +15,22 @@ final class OfflineMapManager {
     /// Bumped on every progress notification so SwiftUI re-reads pack state.
     private(set) var progressTick = 0
 
-    private var observers: [NSObjectProtocol] = []
+    /// Holds the notification tokens and unregisters them when this manager is
+    /// deallocated. SwiftUI re-evaluates `@State private var x = OfflineMapManager()`
+    /// on every re-init of the owning view and keeps only the first instance;
+    /// without this the discarded ones left live observers behind forever.
+    /// A separate (non-isolated) class because a `@MainActor` type's `deinit`
+    /// can't touch its own isolated stored properties.
+    private final class ObserverBag {
+        var tokens: [NSObjectProtocol] = []
+
+        deinit {
+            let center = NotificationCenter.default
+            for token in tokens { center.removeObserver(token) }
+        }
+    }
+
+    private let observers = ObserverBag()
 
     init() {
         let center = NotificationCenter.default
@@ -23,7 +38,7 @@ final class OfflineMapManager {
             .MLNOfflinePackProgressChanged,
             .MLNOfflinePackError,
         ] {
-            observers.append(
+            observers.tokens.append(
                 center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
                     Task { @MainActor in self?.progressTick += 1 }
                 }
@@ -31,7 +46,6 @@ final class OfflineMapManager {
         }
         reload()
     }
-
 
     func reload() {
         packs = MLNOfflineStorage.shared.packs ?? []

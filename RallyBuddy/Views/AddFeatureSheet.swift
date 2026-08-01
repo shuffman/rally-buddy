@@ -2,17 +2,18 @@ import CoreLocation
 import SwiftData
 import SwiftUI
 
+/// Marks a feature at a tapped map point. Map-tap marking is a parked-car
+/// activity, so there is no direction-of-travel option here — a tapped point
+/// isn't somewhere the driver is heading. Quick-marks made while driving get
+/// their bearing from the live course automatically (see AppServices.quickMark).
 struct AddFeatureSheet: View {
     let coordinate: CLLocationCoordinate2D
-    /// The driver's current direction of travel, if known.
-    let course: Double?
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
     @State private var type: RoadFeatureType = .tightCorner
     @State private var note = ""
-    @State private var currentDirectionOnly = false
     @State private var severity = 2
 
     var body: some View {
@@ -36,13 +37,6 @@ struct AddFeatureSheet: View {
                 }
 
                 TextField("Note (optional)", text: $note)
-
-                if course != nil {
-                    Toggle(
-                        "Only for current direction of travel",
-                        isOn: $currentDirectionOnly
-                    )
-                }
             }
             .navigationTitle("Mark Feature")
             .navigationBarTitleDisplayMode(.inline)
@@ -61,7 +55,7 @@ struct AddFeatureSheet: View {
         let feature = RoadFeature(
             type: type,
             coordinate: coordinate,
-            bearing: currentDirectionOnly ? course : nil,
+            bearing: nil,
             note: note,
             severity: type == .tightCorner ? severity : 2
         )

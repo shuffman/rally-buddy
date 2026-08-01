@@ -17,6 +17,9 @@ final class CarPlayMapViewController: UIViewController, @preconcurrency MLNMapVi
     private var shownRoute: [[Double]] = []
     private var shownFeatureIDs: [String] = []
     private var featureAnnotations: [CarPlayMarkerAnnotation] = []
+    /// Theme the current style was loaded for, so a switch on the phone is
+    /// picked up by the car map instead of leaving it on the old style.
+    private var shownTheme: MapTheme?
     /// Target zoom, adjusted by the zoom buttons and applied on every camera
     /// snap (so a zoom change persists as the camera keeps following).
     private var desiredZoom: Double = 15
@@ -42,6 +45,7 @@ final class CarPlayMapViewController: UIViewController, @preconcurrency MLNMapVi
         services.locationService.startStandby()
 
         let map = MLNMapView(frame: view.bounds, styleURL: theme.styleURL)
+        shownTheme = theme
         map.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         map.delegate = self
         map.showsUserLocation = false
@@ -66,6 +70,11 @@ final class CarPlayMapViewController: UIViewController, @preconcurrency MLNMapVi
     }
 
     func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
+        // Annotations outlive a style reload, so they must be removed rather
+        // than just forgotten — otherwise a theme switch doubles every marker.
+        if !featureAnnotations.isEmpty {
+            mapView.removeAnnotations(featureAnnotations)
+        }
         shownRoute = []
         shownFeatureIDs = []
         featureAnnotations = []
@@ -135,6 +144,13 @@ final class CarPlayMapViewController: UIViewController, @preconcurrency MLNMapVi
     /// the scene delegate.
     func refresh() {
         applyCamera(animated: true)
+        // Pick up a map-style switch made on the phone. Reloading the style
+        // wipes our layers; didFinishLoading re-adds them.
+        if theme != shownTheme {
+            shownTheme = theme
+            mapView.styleURL = theme.styleURL
+            return
+        }
         guard let style = mapView.style else { return }
         updateRoute(on: style)
         updateFeatures()
@@ -177,7 +193,7 @@ final class CarPlayMapViewController: UIViewController, @preconcurrency MLNMapVi
 
     private func updateFeatures() {
         let features = services.currentFeatures()
-        let ids = features.map { "\($0.createdAt.timeIntervalSince1970)-\($0.isSuggested)" }
+        let ids = features.map { "\($0.stableID)-\($0.isSuggested)" }
         guard ids != shownFeatureIDs else { return }
         shownFeatureIDs = ids
 

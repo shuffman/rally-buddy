@@ -7,7 +7,9 @@ struct UpcomingFeature: Identifiable {
     let feature: RoadFeature
     let distance: CLLocationDistance
 
-    var id: PersistentIdentifier { feature.id }
+    /// Keyed on the feature's save-stable identity, not `persistentModelID` —
+    /// the latter changes when SwiftData saves a freshly inserted model.
+    var id: String { feature.stableID }
 
     var announcement: String {
         let rounded = Int(max(50, (distance / 50).rounded() * 50))
@@ -33,7 +35,11 @@ final class AlertEngine {
 
     private(set) var upcoming: [UpcomingFeature] = []
 
-    private var announced: Set<PersistentIdentifier> = []
+    /// Keyed on `RoadFeature.stableID`. Using `persistentModelID` here meant a
+    /// feature the driver had just marked was announced back at them: the ID
+    /// recorded by `suppress(_:)` was the pre-save temporary one, and stopped
+    /// matching as soon as SwiftData autosaved.
+    private var announced: Set<String> = []
     /// Scripted co-driver lines for the active route; a feature's templated
     /// callout stays silent when a script line is anchored to that same
     /// feature. Notes are placed exactly at their feature's coordinate, so a
@@ -98,7 +104,7 @@ final class AlertEngine {
             guard distance <= lookaheadDistance else {
                 // Once well clear of a feature it becomes announceable again.
                 if distance > lookaheadDistance * 1.5 {
-                    announced.remove(feature.id)
+                    announced.remove(feature.stableID)
                 }
                 continue
             }
@@ -150,7 +156,7 @@ final class AlertEngine {
     /// Prevents a feature from being announced on the current approach,
     /// e.g. one the driver just marked themselves.
     func suppress(_ feature: RoadFeature) {
-        announced.insert(feature.id)
+        announced.insert(feature.stableID)
     }
 
     func reset() {

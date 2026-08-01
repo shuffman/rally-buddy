@@ -46,7 +46,9 @@ struct OfflineMapsTab: View {
                         Text("Nothing downloaded yet")
                             .foregroundStyle(.secondary)
                     }
-                    ForEach(Array(offlineManager.packs.enumerated()), id: \.offset) { _, pack in
+                    // Keyed on object identity, not array offset: offsets shift
+                    // when a pack is deleted and SwiftUI mis-diffs the rows.
+                    ForEach(offlineManager.packs, id: \.objectIdentifier) { pack in
                         OfflinePackRow(pack: pack, manager: offlineManager)
                     }
                     .onDelete { offsets in
@@ -76,6 +78,12 @@ struct OfflineMapsTab: View {
         guard let bounds = OfflineMapManager.bounds(of: route.path, paddingKm: 8) else { return }
         offlineManager.download(name: route.name, bounds: bounds)
     }
+}
+
+extension MLNOfflinePack {
+    /// Stable per-object identity for SwiftUI lists. `MLNOfflinePack` is a
+    /// class but is neither `Identifiable` nor `Hashable`.
+    var objectIdentifier: ObjectIdentifier { ObjectIdentifier(self) }
 }
 
 extension Bundle {
